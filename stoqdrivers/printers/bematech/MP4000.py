@@ -307,16 +307,6 @@ class MP4000(MP25):
         coupon_number = self._send_command(CMD_GET_COUPON_NUMBER, response='3s')
         return bcd2dec(coupon_number)
 
-    def _get_printer_info(self):
-        """
-        Read brand, model and type from printer
-        """
-        info = self._read_register(self.registers.PRINTER_INFO)
-        all_info = {'brand': info[:15].strip(),
-                    'model': info[15:35].strip(),
-                    'type': info[35:].strip()}
-        return all_info
-
     def _get_till_number(self):
         return self._read_register(self.registers.NUMBER_TILL)
         

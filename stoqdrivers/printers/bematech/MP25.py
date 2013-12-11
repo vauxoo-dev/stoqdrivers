@@ -122,6 +122,7 @@ class MP25Registers(object):
     CCF = 55
     RIF = 42
     NIT = 44
+    PRINTER_INFO = 60
 
     # (size, bcd)
     formats = {
@@ -146,6 +147,7 @@ class MP25Registers(object):
         CCF: ('3s', True),
         RIF: ('20s', False),
         NIT: ('20s', False),
+        PRINTER_INFO: ('42s', False),
     }
 
 
@@ -834,6 +836,16 @@ class MP25(SerialBase):
                             hour=int(date[6:8]),
                             minute=int(date[8:10]),
                             second=int(date[10:12]),)
+
+    def _get_printer_info(self):
+        """
+        Read brand, model and type from printer
+        """
+        info = self._read_register(self.registers.PRINTER_INFO)
+        all_info = {'brand': info[:15].strip(),
+                    'model': info[15:35].strip(),
+                    'type': info[35:].strip()}
+        return all_info
 
 
 if __name__ == "__main__":
