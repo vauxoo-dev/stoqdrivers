@@ -125,6 +125,7 @@ class MP25Registers(object):
     PRINTER_INFO = 60
     NUMBER_STORE = 15
     CURRENCY = 16
+    DAY_TOTAL = 77 # Ventas brutas diarias
 
     # (size, bcd)
     formats = {
@@ -152,6 +153,7 @@ class MP25Registers(object):
         PRINTER_INFO: ('42s', False),
         NUMBER_STORE: ('2s', True),
         CURRENCY: ('2s', False),
+        DAY_TOTAL: ('7s', True),
    }
 
 
@@ -862,6 +864,10 @@ class MP25(SerialBase):
         Read currency from printer (should be configured from factory)
         """
         return self._read_register(self.registers.CURRENCY)
+
+    def _get_total_day(self):
+        return self._read_register(self.registers.DAY_TOTAL) / Decimal(100)
+
 
 
 if __name__ == "__main__":
