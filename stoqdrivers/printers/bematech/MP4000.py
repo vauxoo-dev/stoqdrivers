@@ -115,6 +115,7 @@ class MP4000(MP25):
                             self._customer_document, 
                             datetime.date.today().strftime('%d%m%y%H%M%S'),
                             '000546'))
+
     def coupon_add_item(self, code, description, price, taxcode,
                         quantity=Decimal("1.0"), unit=UnitType.EMPTY,
                         discount=Decimal("0.0"), markup=Decimal("0.0"),
