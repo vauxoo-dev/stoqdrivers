@@ -58,7 +58,6 @@ setup(
     data_files=[
     ("$datadir/conf", listfiles("stoqdrivers/conf", "*.ini"))],
     global_resources=dict(conf="$datadir/conf"),
-    resources=dict(locale="$prefix/share/locale"),
-    install_requires="kiwi-gtk >= 1.9.28",
+    resources=dict(locale="$prefix/share/locale")
     )
 
