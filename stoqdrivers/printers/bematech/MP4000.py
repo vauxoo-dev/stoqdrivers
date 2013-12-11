@@ -307,9 +307,6 @@ class MP4000(MP25):
         coupon_number = self._send_command(CMD_GET_COUPON_NUMBER, response='3s')
         return bcd2dec(coupon_number)
 
-    def _get_till_number(self):
-        return self._read_register(self.registers.NUMBER_TILL)
-        
     def _get_store_number(self):
         return self._read_register(self.registers.NUMBER_STORE)
 

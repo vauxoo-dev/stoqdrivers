@@ -847,6 +847,9 @@ class MP25(SerialBase):
                     'type': info[35:].strip()}
         return all_info
 
+    def _get_till_number(self):
+        return self._read_register(self.registers.NUMBER_TILL)
+
 
 if __name__ == "__main__":
     from stoqdrivers.serialbase import SerialPort
