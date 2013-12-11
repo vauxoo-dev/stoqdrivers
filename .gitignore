@@ -2,3 +2,6 @@ _trial_temp
 *.pyc
 locale
 *.*~
+build
+dist
+stoqdrivers.egg-info
