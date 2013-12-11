@@ -250,9 +250,6 @@ class MP4000(MP25):
             value = bcd2dec(value)
         return value
     
-    def _get_rif(self):
-        return self._read_register(self.registers.RIF)
-
     def _get_nit(self):
         return self._read_register(self.registers.NIT)
         

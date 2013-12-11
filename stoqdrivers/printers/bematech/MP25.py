@@ -120,6 +120,8 @@ class MP25Registers(object):
     SERIAL = 40
     FIRMWARE = 41
     CCF = 55
+    RIF = 42
+    NIT = 44
 
     # (size, bcd)
     formats = {
@@ -142,6 +144,8 @@ class MP25Registers(object):
         SERIAL: ('20s', False),
         FIRMWARE: ('3s', True),
         CCF: ('3s', True),
+        RIF: ('20s', False),
+        NIT: ('20s', False),
     }
 
 
@@ -806,6 +810,9 @@ class MP25(SerialBase):
         ret = '%0*d' % (6, ret)
         firmware = "%s:%s:%s" % (ret[0:2], ret[2:4], ret[4:6])
         return firmware
+
+    def _get_rif(self):
+        return self._read_register(self.registers.RIF)
 
 
 if __name__ == "__main__":
