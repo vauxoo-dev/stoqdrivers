@@ -307,12 +307,6 @@ class MP4000(MP25):
         coupon_number = self._send_command(CMD_GET_COUPON_NUMBER, response='3s')
         return bcd2dec(coupon_number)
 
-    def _get_currency(self):
-        """
-        Read currency from printer (should be configured from factory)
-        """
-        return self._read_register(self.registers.CURRENCY)
-    
     def _get_total_day(self):
         return self._read_register(self.registers.DAY_TOTAL) / Decimal(100)
 

@@ -124,6 +124,7 @@ class MP25Registers(object):
     NIT = 44
     PRINTER_INFO = 60
     NUMBER_STORE = 15
+    CURRENCY = 16
 
     # (size, bcd)
     formats = {
@@ -150,7 +151,8 @@ class MP25Registers(object):
         NIT: ('20s', False),
         PRINTER_INFO: ('42s', False),
         NUMBER_STORE: ('2s', True),
-    }
+        CURRENCY: ('2s', False),
+   }
 
 
 class MP25Constants(BaseDriverConstants):
@@ -854,6 +856,12 @@ class MP25(SerialBase):
 
     def _get_store_number(self):
         return self._read_register(self.registers.NUMBER_STORE)
+
+    def _get_currency(self):
+        """
+        Read currency from printer (should be configured from factory)
+        """
+        return self._read_register(self.registers.CURRENCY)
 
 
 if __name__ == "__main__":
