@@ -821,6 +821,20 @@ class MP25(SerialBase):
                             month=int(date[2:4]),
                             day=int(date[:2]))
         
+    def _get_printer_date(self):
+        """
+        Get printer current date and time 
+        and return a datetime object
+        """
+        opening_date = self._read_register(self.registers.EMISSION_DATE)
+        date = bcd2hex(opening_date)
+        return datetime.datetime(year=2000+int(date[4:6]),
+                            month=int(date[2:4]),
+                            day=int(date[:2]),
+                            hour=int(date[6:8]),
+                            minute=int(date[8:10]),
+                            second=int(date[10:12]),)
+
 
 if __name__ == "__main__":
     from stoqdrivers.serialbase import SerialPort
