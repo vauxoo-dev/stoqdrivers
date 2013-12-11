@@ -561,7 +561,7 @@ class MP25(SerialBase):
     def coupon_add_item(self, code, description, price, taxcode,
                         quantity=Decimal("1.0"), unit=UnitType.EMPTY,
                         discount=Decimal("0.0"), markup=Decimal("0.0"),
-                        unit_desc=""):
+                        unit_desc="", refund=None):
         """ The ECF must be configured to round instead to truncate.
         When truncating, the value may be lower then the one calculated
         by stoq. In this case, the payments added will be higher than the ECF
