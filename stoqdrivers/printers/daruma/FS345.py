@@ -44,8 +44,7 @@ from stoqdrivers.printers.base import BaseDriverConstants
 from stoqdrivers.enum import TaxType, UnitType
 from stoqdrivers.exceptions import (DriverError, PendingReduceZ,
                                     HardwareFailure, ReduceZError,
-                                    AuthenticationFailure, CommError,
-                                    CouponNotOpenError,
+                                    AuthenticationFailure, CouponNotOpenError,
                                     OutofPaperError, PrinterOfflineError,
                                     CouponOpenError, CancelItemError,
                                     CloseCouponError)
@@ -87,7 +86,7 @@ CMD_ADD_ITEM_2L13D = 215
 CMD_ADD_ITEM_3L13D = 216
 CMD_OPEN_VOUCHER = 217
 CMD_DESCRIBE_MESSAGES = 218
-CMD_OPEN_NON_FISCAL_BOUND_RECEIPT = 219 # Pg 36
+CMD_OPEN_NON_FISCAL_BOUND_RECEIPT = 219  # Pg 36
 CMD_CONFIGURE_TAXES = 220
 CMD_LAST_RECORD = 221
 # [ESC] 223 Descrição de produto em 3 linhas com código de 13 dígitos
@@ -127,9 +126,11 @@ RETRIES_BEFORE_TIMEOUT = 5
 OPENED_FISCAL_COUPON = '1'
 CLOSED_COUPON = '2'
 
+
 def isbitset(value, bit):
     # BCD crap
     return (int(value, 16) >> bit) & 1 == 1
+
 
 def ifset(value, bit, false='', true=''):
     if not isbitset(value, bit):
@@ -137,13 +138,15 @@ def ifset(value, bit, false='', true=''):
     else:
         return true
 
+
 class FS345Constants(BaseDriverConstants):
     _constants = {
-        UnitType.WEIGHT:      'Kg',
-        UnitType.METERS:      'm ',
-        UnitType.LITERS:      'Lt',
-        UnitType.EMPTY:       '  ',
-        }
+        UnitType.WEIGHT: 'Kg',
+        UnitType.METERS: 'm ',
+        UnitType.LITERS: 'Lt',
+        UnitType.EMPTY: '  ',
+    }
+
 
 class FS345(SerialBase):
     log_domain = 'fs345'
@@ -272,7 +275,7 @@ class FS345(SerialBase):
         error = int(error_value[2:])
         # Page 61-62
         if error == 39:
-            raise DriverError('Bad parameters: %r'  % raw, error)
+            raise DriverError('Bad parameters: %r' % raw, error)
         elif error == 10:
             raise CouponOpenError(_("Document is already open"), error)
         elif error == 11:
@@ -381,7 +384,7 @@ class FS345(SerialBase):
         return Decimal(rv) / Decimal('1e2')
 
     def _add_voucher(self, type, value):
-        data = "%s1%s%012d\xff" % (type, "0" * 12, # padding
+        data = "%s1%s%012d\xff" % (type, "0" * 12,  # padding
                                    int(value * Decimal('1e2')))
         self.send_command(CMD_OPEN_VOUCHER, data)
 
@@ -454,10 +457,10 @@ class FS345(SerialBase):
         if not code:
             code = "-"
         data = '%2s%13s%d%04d%010d%08d%s%s\xff' % (taxcode, code[:13], d,
-                                               int(E * Decimal('1e2')),
-                                               int(price * Decimal('1e3')),
-                                               int(quantity * Decimal('1e3')),
-                                               unit, description[:174])
+                                                   int(E * Decimal('1e2')),
+                                                   int(price * Decimal('1e3')),
+                                                   int(quantity * Decimal('1e3')),
+                                                   unit, description[:174])
         value = self.send_command(CMD_ADD_ITEM_3L13D53U, data)
         return int(value[1:4])
 
@@ -507,8 +510,8 @@ class FS345(SerialBase):
         self._verify_coupon_open()
 
         if (self._customer_name or
-            self._customer_address or
-            self._customer_document):
+                self._customer_address or
+                self._customer_document):
             customer_name = self._customer_name or _("No client")
             customer_document = self._customer_document or _("No document")
             customer_address = self._customer_address or _("No address")
@@ -547,7 +550,7 @@ class FS345(SerialBase):
         constants = []
         const_letter = 'ABCDEFGHIJKLMNOP'
         for i, char in enumerate(const_letter):
-            const = raw[i*21:i*21+21]
+            const = raw[i * 21:i * 21 + 21]
             # Ignore constants that are not registered.
             if const[2] == '\xff':
                 continue
@@ -573,7 +576,7 @@ class FS345(SerialBase):
     def payment_receipt_open(self, identifier, coo, method, value):
         value = int(value * 100)
         # res is the coo for the current document.
-        res = self.send_command(CMD_OPEN_NON_FISCAL_BOUND_RECEIPT,
+        self.send_command(CMD_OPEN_NON_FISCAL_BOUND_RECEIPT,
                           '%c%c%06d%012d' % (identifier, method, coo, value))
 
     def payment_receipt_print(self, text):
@@ -676,14 +679,14 @@ class FS345(SerialBase):
 
         constants = []
         for i in range(14):
-            reg = tax_codes[i*5]
+            reg = tax_codes[i * 5]
             if reg in 'ABCDEFGHIJKLMNOP':
                 tax_type = TaxType.CUSTOM
             elif reg in 'abcdefghijklmnop':
                 tax_type = TaxType.SERVICE
             else:
                 raise AssertionError(reg)
-            value = tax_codes[i*5+1:i*5+5]
+            value = tax_codes[i * 5 + 1:i * 5 + 5]
             if value == '////':
                 continue
             constants.append((tax_type,
@@ -692,10 +695,10 @@ class FS345(SerialBase):
 
         # These definitions can be found on Page 60
         constants.extend([
-            (TaxType.SUBSTITUTION,   'Fb', None),
-            (TaxType.EXEMPTION,      'Ib', None),
-            (TaxType.NONE,           'Nb', None),
-            ])
+            (TaxType.SUBSTITUTION, 'Fb', None),
+            (TaxType.EXEMPTION, 'Ib', None),
+            (TaxType.NONE, 'Nb', None),
+        ])
 
         return constants
 
@@ -707,7 +710,7 @@ class FS345(SerialBase):
         methods = []
         method_letter = 'ABCDEFGHIJKLMNOP'
         for i in range(16):
-            method = raw[i*18:i*18+18]
+            method = raw[i * 18:i * 18 + 18]
             # XXX V = vinculavel. Why Only These????
             #if method[0] == 'V':
             #    methods.append((method_letter[i], method[1:].strip()))
@@ -727,18 +730,18 @@ class FS345(SerialBase):
 
         taxes = []
         for i in range(14):
-            reg = tax_codes[i*5+1:i*5+5]
+            reg = tax_codes[i * 5 + 1:i * 5 + 5]
             if reg == '////':
                 continue
             reg = reg.replace('.', '')
 
-            if tax_codes[i*5] in 'ABCDEFGHIJKLMNOP':
+            if tax_codes[i * 5] in 'ABCDEFGHIJKLMNOP':
                 type = 'ICMS'
             else:
                 type = 'ISS'
 
-            sold = fiscal_registries[88+(i*14):102+(i*14)]
-            taxes.append((reg, Decimal(sold)/100, type))
+            sold = fiscal_registries[88 + (i * 14):102 + (i * 14)]
+            taxes.append((reg, Decimal(sold) / 100, type))
 
         taxes.append(('DESC', Decimal(fiscal_registries[19:32]) / 100, 'ICMS'))
         taxes.append(('CANC', Decimal(fiscal_registries[33:46]) / 100, 'ICMS'))
@@ -749,7 +752,6 @@ class FS345(SerialBase):
         total_sold = sum(value for _, value, _ in taxes)
 
         old_total = Decimal(fiscal_registries[:18]) / 100
-        cancelled = Decimal(fiscal_registries[33:46]) / 100
         period_total = total_sold
 
         dates = self.send_command(CMD_GET_DATES)
@@ -757,19 +759,19 @@ class FS345(SerialBase):
             opening_date = datetime.date.today()
         else:
             d, m, y = map(int, [dates[:2], dates[2:4], dates[4:6]])
-            opening_date = datetime.date(2000+y, m, d)
+            opening_date = datetime.date(2000 + y, m, d)
 
         identifier = self.send_command(CMD_GET_IDENTIFIER)
         return Settable(
-             opening_date=opening_date,
-             serial=identifier[1:9],
-             serial_id=int(identifier[13:17]),
-             coupon_start=int(registries[:6]),
-             coupon_end=int(registries[7:12]),
-             cro=int(registries[35:38]),
-             crz=int(registries[39:42]), # FIXME: this is being fetched before the actual
-                                         # reduction, so it will offset by one.
-             coo=int(registries[6:12]),
-             period_total=period_total,
-             total=period_total + old_total,
-             taxes=taxes)
+            opening_date=opening_date,
+            serial=identifier[1:9],
+            serial_id=int(identifier[13:17]),
+            coupon_start=int(registries[:6]),
+            coupon_end=int(registries[7:12]),
+            cro=int(registries[35:38]),
+            crz=int(registries[39:42]),  # FIXME: this is being fetched before the actual
+            # reduction, so it will offset by one.
+            coo=int(registries[6:12]),
+            period_total=period_total,
+            total=period_total + old_total,
+            taxes=taxes)

@@ -184,7 +184,7 @@ class PlaybackPort:
         fd.close()
 
 
-class BaseTest(unittest.TestCase):
+class _BaseTest(unittest.TestCase):
     def __init__(self, test_name):
         self._test_name = test_name
         unittest.TestCase.__init__(self, test_name)
@@ -225,7 +225,7 @@ class BaseTest(unittest.TestCase):
         return os.path.join(testdir, RECORDER_DATA_DIR, filename)
 
 
-class TestCoupon(object):
+class _TestCoupon(object):
     """ Test a coupon creation """
     device_class = FiscalPrinter
 
@@ -302,8 +302,8 @@ class TestCoupon(object):
         # 7. Add item with coupon totalized
         self._device.totalize()
         self.failUnlessRaises(AlreadyTotalized,
-            self._device.add_item, u"123456", u"Monitor LG Flatron T910B",
-            Decimal("10"), self._taxnone)
+                              self._device.add_item, u"123456", u"Monitor LG Flatron T910B",
+                              Decimal("10"), self._taxnone)
 
         self._device.add_payment(self._payment_method, Decimal("100"))
         self._device.close()
@@ -431,7 +431,7 @@ class TestCoupon(object):
 
         self._open_coupon()
         self._device.add_item(u"987654", u"Monitor LG 775N", Decimal(10),
-                             self._taxnone)
+                              self._taxnone)
 
         self._device.totalize()
         self._device.add_payment(payment_id, Decimal(10))
@@ -473,15 +473,15 @@ class TestCoupon(object):
         self._device.gerencial_report_open()
         # Send a big report to test the line breaks and limit of columns number
         self._device.gerencial_report_print("Teste Relatorio Gerencial\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
         self._device.gerencial_report_close()
 
     def test_read_memory(self):
@@ -496,12 +496,12 @@ class TestCoupon(object):
         self._device.get_sintegra()
 
 
-class DarumaFS345(TestCoupon, BaseTest):
+class DarumaFS345(_TestCoupon, _BaseTest):
     brand = 'daruma'
     model = 'FS345'
 
 
-class DarumaFS2100(TestCoupon, BaseTest):
+class DarumaFS2100(_TestCoupon, _BaseTest):
     brand = 'daruma'
     model = 'FS2100'
 
@@ -517,23 +517,23 @@ class DarumaFS2100(TestCoupon, BaseTest):
 
 
 # XXX: This tests wore not done with a real printer, we used an emulator
-class BematechMP20(TestCoupon, BaseTest):
+class BematechMP20(_TestCoupon, _BaseTest):
     brand = 'bematech'
     model = 'MP20'
 
 
-class BematechMP25FI(TestCoupon, BaseTest):
+class BematechMP25FI(_TestCoupon, _BaseTest):
     brand = 'bematech'
     model = 'MP25'
 
 
 # XXX: This tests wore not done with a real printer, we used an emulator
-class BematechMP2100(TestCoupon, BaseTest):
+class BematechMP2100(_TestCoupon, _BaseTest):
     brand = 'bematech'
     model = 'MP2100'
 
 
-class FiscNet(TestCoupon, BaseTest):
+class FiscNet(_TestCoupon, _BaseTest):
     brand = "fiscnet"
     model = "FiscNetECF"
 
@@ -546,11 +546,11 @@ class FiscNet(TestCoupon, BaseTest):
         return None
 
 
-class EpsonFBIII(TestCoupon, BaseTest):
+class EpsonFBIII(_TestCoupon, _BaseTest):
     brand = "epson"
     model = "FBIII"
 
 
-# class DataregisEP375(TestCoupon, BaseTest):
+# class DataregisEP375(_TestCoupon, _BaseTest):
 #     brand = "dataregis"
 #     model = "EP375"
