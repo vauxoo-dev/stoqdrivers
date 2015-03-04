@@ -114,11 +114,11 @@ class FiscalPrinter(BasePrinter):
         return self._driver.coupon_is_customer_identified()
 
     def has_open_coupon(self):
-        log.info('has_open_coupon()')
+        print('######     has_open_coupon()   ######')
         return self._driver.has_open_coupon()
 
     def open(self):
-        log.info('coupon_open()')
+        print('####    coupon_open()     #####')
 
         return self._driver.coupon_open()
 
@@ -163,14 +163,14 @@ class FiscalPrinter(BasePrinter):
     @capcheck(Decimal, Decimal, taxcode)
     def totalize(self, discount=currency(0), surcharge=currency(0),
                  taxcode=TaxType.NONE):
-        log.info('totalize(discount=%r, surcharge=%r, taxcode=%r)' % (
+        print('totalize(discount=%r, surcharge=%r, taxcode=%r)' % (
             discount, surcharge, taxcode))
 
         if discount and surcharge:
             raise TypeError("discount and surcharge can not be used together")
         if surcharge and taxcode == TaxType.NONE:
             raise ValueError("to specify a surcharge you need specify its "
-                             "tax code")
+                             "tax code")    
         result = self._driver.coupon_totalize(discount, surcharge, taxcode)
         self._has_been_totalized = True
         self.totalized_value = result
@@ -178,20 +178,18 @@ class FiscalPrinter(BasePrinter):
 
     @capcheck(basestring, Decimal, basestring)
     def add_payment(self, payment_method, payment_value, description=''):
-        log.info("add_payment(method=%r, value=%r, description=%r)" % (
+        print("add_payment(method=%r, value=%r, description=%r)" % (
             payment_method, payment_value, description))
 
         if not self._has_been_totalized:
             raise PaymentAdditionError(_("You must totalize the coupon "
                                          "before add payments."))
-        result = self._driver.coupon_add_payment(
-            payment_method, payment_value,
-            self._format_text(description))
+        result = self._driver.coupon_add_payment(payment_method, payment_value, self._format_text(description))
         self.payments_total_value += payment_value
         return result
 
     def cancel(self):
-        log.info('coupon_cancel()')
+        print('coupon_cancel()')
         retval = self._driver.coupon_cancel()
         self._has_been_totalized = False
         self.payments_total_value = Decimal("0.0")
@@ -211,7 +209,7 @@ class FiscalPrinter(BasePrinter):
 
     @capcheck(basestring)
     def close(self, promotional_message=''):
-        log.info('coupon_close(promotional_message=%r)' % (
+        print('coupon_close(promotional_message=%r)' % (
             promotional_message))
 
         if not self._has_been_totalized:
@@ -226,8 +224,9 @@ class FiscalPrinter(BasePrinter):
                                      "match the totalized value (%.2f).")
                                    % (self.payments_total_value,
                                       self.totalized_value))
-        res = self._driver.coupon_close(
-            self._format_text(promotional_message))
+        #res = self._driver.coupon_close(
+#            self._format_text(promotional_message))
+        res = self._driver.coupon_close('')
         self._has_been_totalized = False
         self.payments_total_value = Decimal("0.0")
         self.totalized_value = Decimal("0.0")

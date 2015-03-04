@@ -5,6 +5,9 @@ Created on Thu Sep  6 17:12:46 2012
 @author: truiz
 """
 
+import serial
+import struct 
+
 from stoqdrivers.printers.bematech.MP25 import MP25
 from stoqdrivers.printers.bematech.MP25 import *
 from stoqdrivers.exceptions import AlmostOutofPaper
@@ -209,7 +212,9 @@ class MP4000(MP25):
                 cmd += arg
             else:
                 raise NotImplementedError(type(arg))
+        print '_send_command --> cmd', hex(cmd)
         data = self._create_packet(cmd)
+        print '_send_command --> data', hex(data)
         self.write(data)
 
         format = self.reply_format % fmt
@@ -227,6 +232,21 @@ class MP4000(MP25):
             response = response[0]
         return response
 
+    def coupon_add_payment(self, payment_method, value, description=u"Nada"):
+        # self._send_command(CMD_ADD_PAYMENT,
+        #                    "%s%014d%s" % (payment_method[:2],
+        #                                   int(value * Decimal('1e2')), description[:80]))
+        # string_serial = '''\x02\x05\x00\x1b\x16\x64\x95\x00'''
+        # self.write(string_serial)
+        string_serial = '''\x02\x14\x00\x1b\x48\x30\x31\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x31\x30\x30\x65\x03'''
+        self.write(string_serial)
+        self.remainder_value -= value
+        print 'self.remainder_value', self.remainder_value, value
+        if self.remainder_value < 0.0:
+            self.remainder_value = Decimal("0.0")
+        print 'self.remainder_value', self.remainder_value, value
+        return self.remainder_value
+
     def get_status(self, val=None):
         """
         This method is overloaded to use MP4000status class
@@ -237,6 +257,7 @@ class MP4000(MP25):
 
     def _get_status_printer(self):
         ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
+        # print 'ack, st1, st2', ack, st1, st2
         if st1:
             raise 
         return val
@@ -246,7 +267,13 @@ class MP4000(MP25):
             fmt, bcd = self.registers.formats[reg]
         except KeyError:
             raise NotImplementedError(reg)
-        value = self._send_command(CMD_READ_REGISTER, reg, response=fmt)
+        string_serial = '''\x02\x05\x00\x1b\x23\x37\x75\x00'''
+        self.write(string_serial)
+        value = self.read(6)
+        print 'value', value
+        #format = 'BBBBBB'
+        #print 'Get ccf: ', struct.unpack(format, value)
+        #value = self._send_command(CMD_READ_REGISTER, reg, response=fmt)
         if bcd:
             value = bcd2dec(value)
         return value
@@ -372,7 +399,7 @@ class MP4000(MP25):
         else:
             cmd += '00%04d00%04d'%(start, end)
         cmd += dest
-        print cmd
+        print 'cmd', cmd
         data = self._create_packet(cmd)
         self.write(data)
         if dest == 'I':
@@ -523,6 +550,7 @@ class MP4000Status(object):
         return self.st1 & 2
 
     def _check_error_in_dict(self, error_codes, value):
+        #print 'error_codes', error_codes, value
         for key in error_codes:
             if key & value:
                 raise error_codes[key]

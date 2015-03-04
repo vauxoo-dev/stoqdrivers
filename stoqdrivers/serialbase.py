@@ -100,7 +100,7 @@ class SerialBase(object):
         return self.readline()
 
     def write(self, data):
-        log.debug(">>> %r (%d bytes)" % (data, len(data)))
+        print(">>> %r (%d bytes)" % (data, len(data)))
         self._port.write(data)
 
     def read(self, n_bytes):

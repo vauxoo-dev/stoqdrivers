@@ -40,6 +40,7 @@ def encode_text(text, encoding):
     @type text:        str
     @returns:          converted text
     """
+    print 'text', text, encoding
     if not isinstance(text, unicode):
         return text
     if encoding == "ascii":

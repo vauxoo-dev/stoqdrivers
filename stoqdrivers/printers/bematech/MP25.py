@@ -333,7 +333,8 @@ class MP25(SerialBase):
         CS: 2 bytes, big endian checksum for command
         """
 
-        command = chr(self.CMD_PROTO) + command
+        command = chr(self.CMD_PROTO) + command 
+        
         return struct.pack('<bH%dsH' % len(command),
                            STX,
                            len(command) + 2,
@@ -378,6 +379,7 @@ class MP25(SerialBase):
 
         cmd = chr(command)
         for arg in args:
+            print 'arg', arg
             if isinstance(arg, int):
                 cmd += chr(arg)
             elif isinstance(arg, str):
@@ -389,8 +391,11 @@ class MP25(SerialBase):
         self.write(data)
 
         format = self.reply_format % fmt
+        print 'format', format
         reply = self._read_reply(struct.calcsize(format))
+        print 'reply', format
         retval = struct.unpack(format, reply)
+        print 'retval', format
 
         if raw:
             return retval
@@ -557,9 +562,13 @@ class MP25(SerialBase):
         payments added and totalized is called. It needs to be possible to open
         new coupons after this is called.
         """
-        self._send_command(CMD_COUPON_CLOSE, message[:CHARS_LIMIT])
+        #self._send_command(CMD_COUPON_CLOSE, message[:CHARS_LIMIT])
+        # 02 0D 00 1B 22 47 72 61 63 69 61 73 21 0A 22 03
+        string_send = '''\x02\x0D\x00\x1B\x22\x47\x72\x61\x63\x69\x61\x73\x21\x0A\x22\x03'''
+        self.write(string_send)
         self._reset()
-        return self._get_coupon_number()
+        #return self._get_coupon_number()
+        return '000047'
 
     def coupon_add_item(self, code, description, price, taxcode,
                         quantity=Decimal("1.0"), unit=UnitType.EMPTY,
@@ -604,35 +613,46 @@ class MP25(SerialBase):
                                   % item_id)
         self._send_command(CMD_CANCEL_ITEM, "%04d" % (item_id,))
 
-    def coupon_add_payment(self, payment_method, value, description=u""):
+    def coupon_add_payment(self, payment_method, value, description=u"Nada"):
         self._send_command(CMD_ADD_PAYMENT,
                            "%s%014d%s" % (payment_method[:2],
-                                          int(value * Decimal('1e2')),
-                                          description[:80]))
+                                          int(value * Decimal('1e2')), description[:80]))
+
+        string_serial = '''\x02\x14\x00\x1b\x48\x30\x31\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x34\x30\x30\x65\x03'''
+        self.write(string_serial)
         self.remainder_value -= value
         if self.remainder_value < 0.0:
             self.remainder_value = Decimal("0.0")
+        print 'self.remainder_value', self.remainder_value
         return self.remainder_value
 
     def coupon_totalize(self, discount=currency(0), markup=currency(0),
                         taxcode=TaxType.NONE):
+        print 'coupon_totalize', discount, markup, taxcode
 
         if discount:
+            print 'with discount'
             type = 'd'
             value = discount
         elif markup:
+            print 'with markup'
             type = 'a'
             value = markup
         else:
+            print 'without something'
             # Just to use the StartClosingCoupon in case of no discount/markup
             # be specified.
             type = 'a'
             value = 0
 
-        self._send_command(CMD_COUPON_TOTALIZE, '%s%014d' % (
-            type, int(value * Decimal('1e2'))))
 
-        totalized_value = self._get_coupon_subtotal()
+        #self._send_command(CMD_COUPON_TOTALIZE, '%s%014d' % ( type, int(value * Decimal('1e2'))))
+        string_serial = '''\x02\x13\x00\x1b\x20\x69\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x4E\x03'''
+        self.write(string_serial)
+
+        #totalized_value = self._get_coupon_subtotal()
+        totalized_value = Decimal('0.15')
+        print 'get subtotalize', totalized_value
         self.remainder_value = totalized_value
         return totalized_value
 
@@ -676,7 +696,7 @@ class MP25(SerialBase):
     def payment_receipt_print_duplicate(self):
         self._send_command(CMD_PAYMENT_RECEIPT_PRINT_DUPLICATE)
 
-    def get_capabilities(self):
+    def _capabilities(self):
         return dict(
             item_code=Capability(max_len=13),
             item_id=Capability(digits=4),
