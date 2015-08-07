@@ -10,6 +10,7 @@ from stoqdrivers.printers.bematech.MP25 import *
 from stoqdrivers.exceptions import AlmostOutofPaper
 import re
 import datetime
+from logging import getLogger as Logger
 log = Logger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
@@ -85,7 +86,7 @@ class MP4000Registers(object):
         PAYMENTS: ('620s', False),
         DAY_TOTAL: ('7s', True),
     }
-    
+
 
 
 
@@ -106,13 +107,13 @@ class MP4000(MP25):
     def credit_note_open(self):
         """ This needs to be called before anything else """
         # print "%-41s%-15s%-18s%-12s%-6s" % (self._customer_name, self.get_serial(),
-                            # self._customer_document, 
+                            # self._customer_document,
                             # datetime.datetime.now().strftime('%d%m%y%H%M%S'),
                             # '00768')
-        self._send_command(CMD_CREDIT_NOTE_OPEN, 
-                            "%-41s%-15s%-18s%-12s%-6s" % 
+        self._send_command(CMD_CREDIT_NOTE_OPEN,
+                            "%-41s%-15s%-18s%-12s%-6s" %
                             (self._customer_name, self.get_serial(),
-                            self._customer_document, 
+                            self._customer_document,
                             datetime.date.today().strftime('%d%m%y%H%M%S'),
                             '000546'))
 
@@ -170,7 +171,7 @@ class MP4000(MP25):
 
             log.debug("<<< %r (%d bytes)" % (data, len(data)))
             return data
-            
+
     def _get_bytes(self, number):
         """
         This funtion is in case the command is 2 bytes length
@@ -187,7 +188,7 @@ class MP4000(MP25):
                 number = number >> 8
                 ret = chr(b) + ret
         return ret
-        
+
     def _send_command(self, command, *args, **kwargs):
         fmt = ''
         if 'response' in kwargs:
@@ -199,9 +200,9 @@ class MP4000(MP25):
 
         if kwargs:
             raise TypeError("Invalid kwargs: %r" % (kwargs,))
-        
+
         cmd = self._get_bytes(command)
-            
+
         for arg in args:
             if isinstance(arg, int):
                 cmd += self._get_bytes(arg)
@@ -219,7 +220,7 @@ class MP4000(MP25):
         if raw:
             return retval
        # If just reading a register
-        if command != CMD_READ_REGISTER:              
+        if command != CMD_READ_REGISTER:
             self._check_error(retval)
 
         response = retval[1:-self.status_size]
@@ -238,7 +239,7 @@ class MP4000(MP25):
     def _get_status_printer(self):
         ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
         if st1:
-            raise 
+            raise
         return val
 
     def _read_register(self, reg):
@@ -250,16 +251,16 @@ class MP4000(MP25):
         if bcd:
             value = bcd2dec(value)
         return value
-    
+
     def _get_nit(self):
         return self._read_register(self.registers.NIT)
-        
+
     def _get_totalizers(self):
         return self._send_command(CMD_READ_TOTALIZERS, response='219s')
 
     def _get_last_z(self):
         return self._send_command(CMD_LAST_Z, response='324s')
-        
+
     def get_tax_constants(self):
 #        status = self._read_register(self.registers.TOTALIZERS)
 #        status = struct.unpack('>H', status)[0]
@@ -300,7 +301,7 @@ class MP4000(MP25):
         Return printer serial number
         """
         return self._read_register(self.registers.SERIAL).strip().strip('\x00')
-    
+
     def _get_coupon_number(self):
         """
         Get the last coupon number
@@ -323,20 +324,20 @@ class MP4000(MP25):
         ret.update({6 : ("Tecla de papel presionada ", ps & 64 == 1)})
         ret.update({6 : ("Jumper de mantenimiento ", ps & 128 == 1)})
         return ret
-    
+
     def _set_fiscal_app(self, name):
         """
         This function can update application name that will be
         printed at the end of boucher
         """
         self._send_command(CMD_FISCAL_APP, "%-84s" % (name))
-    
+
     def _get_uptime(self):
         """
         Return the time that the printer has been on
         """
         return self._read_register(self.registers.OPERATION_TIME)
-    
+
     def _set_paper_sensor(self, state = True):
         """
         Set almost out of paper sensor
@@ -357,17 +358,17 @@ class MP4000(MP25):
         Set till and store numbers
         """
         return self._send_command(CMD_TD_ECV, "%04d%04d"%(till, store), raw=True)
-        
+
     def _add_payment_method(self, name):
         return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
                                  '%-16s1' % name, raw=True)
-    
+
     def _read_transactions(self, start, end, dest = 'R'):
         """
         Returns a string with all transactions from a given range
         """
         cmd = self._get_bytes(CMD_TRANSACTIONS)
-        if isinstance(start, datetime.datetime) and isinstance(end, datetime.datetime): 
+        if isinstance(start, datetime.datetime) and isinstance(end, datetime.datetime):
             cmd += '%6s%6s'%(start.strftime('%d%m%y'), end.strftime('%d%m%y'))
         else:
             cmd += '00%04d00%04d'%(start, end)
@@ -433,7 +434,7 @@ class MP4000(MP25):
         if f:
             data['invoices'].append(f)
         return data
-        
+
     def get_capabilities(self):
         """
         Fields size for this printer
@@ -453,8 +454,8 @@ class MP4000(MP25):
             add_cash_value=Capability(min_size=0.1, digits=12, decimals=2),
             remove_cash_value=Capability(min_size=0.1, digits=12, decimals=2),
             )
-        
-    
+
+
 class MP4000Status(object):
     PENDING_REDUCE_Z = 66
 
@@ -532,7 +533,7 @@ class MP4000Status(object):
                     (self.st, self.st1, self.st2))
         # print "status: st=%s st1=%s st2=%s" % (self.st_descr, self.st1, self.st2)
         #if self.st != ACK:
-            
+
         if self.st1 != 0:
             self._check_error_in_dict(self.st1_codes, self.st1)
 
