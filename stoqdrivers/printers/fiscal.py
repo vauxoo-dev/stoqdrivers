@@ -27,10 +27,10 @@
 
 import datetime
 from decimal import Decimal
+import logging
 
 from kiwi.argcheck import number
 from kiwi.currency import currency
-from kiwi.log import Logger
 
 from stoqdrivers.exceptions import (CloseCouponError, PaymentAdditionError,
                                     AlreadyTotalized, InvalidValue)
@@ -42,7 +42,7 @@ from stoqdrivers.translation import stoqdrivers_gettext
 
 _ = stoqdrivers_gettext
 
-log = Logger('stoqdrivers.fiscalprinter')
+log = logging.getLogger('stoqdrivers.fiscalprinter')
 
 #
 # Extra data types to argcheck
@@ -87,7 +87,14 @@ class FiscalPrinter(BasePrinter):
         self.totalized_value = Decimal("0.0")
         self._capabilities = self._driver.get_capabilities()
         self._charset = self._driver.coupon_printer_charset
-        self.setup()
+        try:
+            self.setup()
+            self._setup_complete = True
+        except Exception:
+            self._setup_complete = False
+
+    def setup_complete(self):
+        return self._setup_complete
 
     def get_capabilities(self):
         return self._capabilities

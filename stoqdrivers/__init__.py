@@ -25,13 +25,11 @@
 ##              Johan Dahlin <henrique@async.com.br>
 ##
 
-__version__ = (0, 9, 21, 1)
+__version__ = (0, 9, 22)
 
 from kiwi.environ import Library
 
 __all__ = ["library"]
 
 library = Library("stoqdrivers", root="..")
-if library.uninstalled:
-    library.add_global_resource("conf", "stoqdrivers/conf")
 library.enable_translation()
