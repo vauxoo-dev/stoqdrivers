@@ -13,7 +13,8 @@ import datetime
 log = Logger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
-CMD_ADD_ITEM = 0x3e47 # this is different from mp25
+# CMD_ADD_ITEM = 0x3e47 # this is different from mp25
+CMD_ADD_ITEM = 0x09 # Simple add item
 CMD_FISCAL_APP = 0x3e40 # set fiscal app name
 CMD_PAPER_SENSOR = 0x3e3d # set fiscal app name
 CMD_Z_TIME_LIMIT = 90
