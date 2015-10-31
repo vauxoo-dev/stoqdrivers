@@ -4,13 +4,15 @@ Created on Thu Sep  6 17:12:46 2012
 
 @author: truiz
 """
-
+import logging
 from stoqdrivers.printers.bematech.MP25 import MP25
 from stoqdrivers.printers.bematech.MP25 import *
 from stoqdrivers.exceptions import AlmostOutofPaper
 import re
 import datetime
-log = Logger('stoqdrivers.bematech.MP4000')
+
+
+log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
 # CMD_ADD_ITEM = 0x3e47 # this is different from mp25
