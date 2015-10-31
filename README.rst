@@ -1,5 +1,7 @@
-[![Build Status](https://travis-ci.org/Vauxoo/stoqdrivers.svg?branch=master)](https://travis-ci.org/Vauxoo/stoqdrivers)
-[![Coverage Status](https://coveralls.io/repos/Vauxoo/stoqdrivers/badge.svg?branch=master&service=github)](https://coveralls.io/github/Vauxoo/stoqdrivers?branch=master)
+.. image:: https://travis-ci.org/Vauxoo/stoqdrivers.svg?branch=master
+    :target: https://travis-ci.org/Vauxoo/stoqdrivers
+.. image:: https://coveralls.io/repos/Vauxoo/stoqdrivers/badge.svg?branch=master&service=github :target: https://coveralls.io/github/Vauxoo/stoqdrivers?branch=master
+
 
 Stoqdrivers
 ===========
