@@ -2,11 +2,11 @@
 
 [report]
 include =
-    stoqdrivers/*
+    */stoqdrivers/*
 
 omit =
-    */tests/
-    *__init__.py
+    tests/*
+    */__init__.py
 
 # Regexes for lines to exclude from consideration
 exclude_lines =
