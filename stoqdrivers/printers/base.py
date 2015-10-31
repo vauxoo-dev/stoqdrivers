@@ -32,7 +32,8 @@ from kiwi.python import namedAny
 
 from stoqdrivers.interfaces import (ICouponPrinter,
                                     IDriverConstants,
-                                    IChequePrinter)
+                                    IChequePrinter,
+                                    INonFiscalPrinter)
 from stoqdrivers.base import BaseDevice
 from stoqdrivers.enum import DeviceType
 from stoqdrivers.translation import stoqdrivers_gettext
@@ -70,7 +71,8 @@ class BasePrinter(BaseDevice):
     def check_interfaces(self):
         driver_interfaces = providedBy(self._driver)
         if (not ICouponPrinter in driver_interfaces
-                and not IChequePrinter in driver_interfaces):
+                and not IChequePrinter in driver_interfaces
+                and not INonFiscalPrinter in driver_interfaces):
             raise TypeError("The driver `%r' doesn't implements a valid "
                             "interface" % self._driver)
 
@@ -94,7 +96,7 @@ def get_virtual_printer():
 def get_supported_printers():
     result = {}
     for brand, module_names in [
-        ('bematech', ['DP20C', 'MP20', 'MP2100', 'MP25', 'MP4000']),
+            ('bematech', ['DP20C', 'MP20', 'MP2100', 'MP2100TH', 'MP25', 'MP2100TH']),
             ('daruma', ['FS2100', 'FS345', 'FS600MFD']),
             ('dataregis', ['EP375', 'Quick']),
             ('elgin', ['KFiscal']),
@@ -118,7 +120,7 @@ def get_supported_printers():
 def get_supported_printers_by_iface(interface):
     """ Returns all the printers that supports the interface.  The result
     format is the same for get_supported_printers."""
-    if not interface in (ICouponPrinter, IChequePrinter):
+    if not interface in (ICouponPrinter, IChequePrinter, INonFiscalPrinter):
         raise TypeError("Interface specified (`%r') is not a valid "
                         "printer interface" % interface)
     all_printers_supported = get_supported_printers()
