@@ -27,7 +27,7 @@ install:
   - pip install coveralls  # Testing packages
 
 script:
-  - python ${TRAVIS_BUILD_DIR}/tests/check_ifaces_impl.py
+  - coverage run ${TRAVIS_BUILD_DIR}/tests/check_ifaces_impl.py
   # TODO: Enable coupon test. (How are executed?)
 
 after_success:
