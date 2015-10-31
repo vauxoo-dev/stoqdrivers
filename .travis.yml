@@ -1,0 +1,34 @@
+language: python
+
+sudo: false
+
+cache:
+  apt: true
+  directories:
+    - $HOME/.pip-cache/
+
+virtualenv:
+  system_site_packages: true
+
+python:
+  - "2.7"
+
+addons:
+  apt:
+    packages:
+      - python-gobject
+
+install:
+  # Installing requirements
+  - pip install -r ${TRAVIS_BUILD_DIR}/requirements.txt
+  - pip install .
+
+  # Installing testing requirements
+  - pip install coveralls  # Testing packages
+
+script:
+  - python ${TRAVIS_BUILD_DIR}/tests/check_ifaces_impl.py
+  # TODO: Enable coupon test. (How are executed?)
+
+after_success:
+  - coveralls
