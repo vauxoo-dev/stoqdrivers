@@ -28,11 +28,11 @@ Epson FB II ECF driver
 """
 
 import datetime
+import logging
 import struct
 from decimal import Decimal
 
 from kiwi.currency import currency
-from kiwi.log import Logger
 from kiwi.python import Settable
 from zope.interface import implements
 
@@ -82,7 +82,7 @@ OPENED_NON_FISCAL_COUPON = '1000'
 
 _ = stoqdrivers_gettext
 
-log = Logger('stoqdrivers.epson')
+log = logging.getLogger('stoqdrivers.epson')
 
 
 class Reply(object):
@@ -247,7 +247,7 @@ class FBII(SerialBase):
     #
 
     def _get_next_command_id(self):
-        if self._command_id == 256:
+        if self._command_id == 255:
             self._command_id = FIRST_COMMAND_ID - 1
 
         self._command_id += 1
