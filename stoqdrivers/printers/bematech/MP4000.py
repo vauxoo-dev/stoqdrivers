@@ -164,6 +164,28 @@ class MP4000(MP25):
         self._send_command(refund and CMD_ADD_REFUND or CMD_ADD_ITEM, data)
         return self._get_last_item_id()
 
+    def coupon_totalize(self, discount=currency(0), markup=currency(0),
+                        taxcode=TaxType.NONE):
+
+        if discount:
+            type = 'd'
+            value = discount
+        elif markup:
+            type = 'a'
+            value = markup
+        else:
+            # Just to use the StartClosingCoupon in case of no discount/markup
+            # be specified.
+            type = 'D'
+            value = 0
+
+        self._send_command(CMD_COUPON_TOTALIZE, '%s%04d' % (
+            type, int(value * Decimal('1e2'))))
+
+        totalized_value = self._get_coupon_subtotal()
+        self.remainder_value = totalized_value
+        return totalized_value
+
     def _read_reply(self, size):
         a = 0
         data = ''
