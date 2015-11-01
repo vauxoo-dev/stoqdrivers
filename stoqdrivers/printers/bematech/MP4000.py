@@ -245,7 +245,7 @@ class MP4000(MP25):
             else:
                 raise NotImplementedError(type(arg))
         data = self._create_packet(cmd)
-        print 'Command string: ', ' '.join([str(hex(ord(char))) for char in cmd])
+        log.debug('Command string: %s', ' '.join([str(hex(ord(char))) for char in cmd]))
         self.write(data)
 
         format = self.reply_format % fmt
