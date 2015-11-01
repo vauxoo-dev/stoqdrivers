@@ -125,7 +125,7 @@ class MP25Registers(object):
     PRINTER_INFO = 60
     NUMBER_STORE = 15
     CURRENCY = 16
-    DAY_TOTAL = 77 # Ventas brutas diarias
+    DAY_TOTAL = 77  # Ventas brutas diarias
 
     # (size, bcd)
     formats = {
@@ -154,7 +154,7 @@ class MP25Registers(object):
         NUMBER_STORE: ('2s', True),
         CURRENCY: ('2s', False),
         DAY_TOTAL: ('7s', True),
-   }
+    }
 
 
 class MP25Constants(BaseDriverConstants):
@@ -827,23 +827,23 @@ class MP25(SerialBase):
     def _get_opening_date(self):
         opening_date = self._read_register(self.registers.EMISSION_DATE)
         date = bcd2hex(opening_date[:6])
-        return datetime.date(year=2000+int(date[4:6]),
-                            month=int(date[2:4]),
-                            day=int(date[:2]))
-        
+        return datetime.date(year=2000 + int(date[4:6]),
+                             month=int(date[2:4]),
+                             day=int(date[:2]))
+
     def _get_printer_date(self):
         """
-        Get printer current date and time 
+        Get printer current date and time
         and return a datetime object
         """
         opening_date = self._read_register(self.registers.EMISSION_DATE)
         date = bcd2hex(opening_date)
-        return datetime.datetime(year=2000+int(date[4:6]),
-                            month=int(date[2:4]),
-                            day=int(date[:2]),
-                            hour=int(date[6:8]),
-                            minute=int(date[8:10]),
-                            second=int(date[10:12]),)
+        return datetime.datetime(year=2000 + int(date[4:6]),
+                                 month=int(date[2:4]),
+                                 day=int(date[:2]),
+                                 hour=int(date[6:8]),
+                                 minute=int(date[8:10]),
+                                 second=int(date[10:12]),)
 
     def _get_printer_info(self):
         """
@@ -869,7 +869,6 @@ class MP25(SerialBase):
 
     def _get_total_day(self):
         return self._read_register(self.registers.DAY_TOTAL) / Decimal(100)
-
 
 
 if __name__ == "__main__":

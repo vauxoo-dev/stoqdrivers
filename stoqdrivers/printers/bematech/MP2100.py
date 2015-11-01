@@ -34,10 +34,9 @@ from stoqdrivers.printers.bematech.MP25 import CMD_COUPON_OPEN
 class MP2100(MP25):
     model_name = "Bematech MP2100 TH FI"
 
-
     def coupon_open(self):
         """ This needs to be called before anything else """
         self._send_command(CMD_COUPON_OPEN,
-                            "%-41s%-18s%-133s" % (self._customer_name,
+                           "%-41s%-18s%-133s" % (self._customer_name,
                                                  self._customer_document,
                                                  self._customer_address))

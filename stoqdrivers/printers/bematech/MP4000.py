@@ -2,30 +2,39 @@
 """
 Created on Thu Sep  6 17:12:46 2012
 
-@author: truiz
+ @author: truiz
 """
-import logging
-from stoqdrivers.printers.bematech.MP25 import MP25
-from stoqdrivers.printers.bematech.MP25 import *
-from stoqdrivers.exceptions import AlmostOutofPaper
-import re
-import datetime
 
+import datetime
+import logging
+import re
+
+from stoqdrivers.exceptions import AlmostOutofPaper
+from stoqdrivers.printers.bematech.MP25 import (
+    CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER,
+    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER, CMD_READ_TAXCODES,
+    CMD_READ_TOTALIZERS, CMD_STATUS, MP25, RETRIES_BEFORE_TIMEOUT,
+    CancelItemError, Capability, CommandError, CouponNotOpenError,
+    CouponOpenError, CouponTotalizeError, Decimal, DriverError,
+    HardwareFailure, ItemAdditionError, OutofPaperError, PaymentAdditionError,
+    PrinterError, PrinterOfflineError, TaxType, UnitType, bcd2dec, currency,
+    stoqdrivers_gettext, struct, val)
 
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
 # CMD_ADD_ITEM = 0x3e47 # this is different from mp25
-CMD_ADD_ITEM = 0x09 # Simple add item
-CMD_FISCAL_APP = 0x3e40 # set fiscal app name
-CMD_PAPER_SENSOR = 0x3e3d # set fiscal app name
+CMD_ADD_ITEM = 0x09  # Simple add item
+CMD_FISCAL_APP = 0x3e40  # set fiscal app name
+CMD_PAPER_SENSOR = 0x3e3d  # set fiscal app name
 CMD_Z_TIME_LIMIT = 90
 CMD_TD_ECV = 17
 CMD_LAST_Z = 0x3e37
-CMD_TRANSACTIONS = 0x3e4737 # get transactions from a given period
-CMD_ADD_REFUND = 0x3e4733 # article return
+CMD_TRANSACTIONS = 0x3e4737  # get transactions from a given period
+CMD_ADD_REFUND = 0x3e4733  # article return
 CMD_CREDIT_NOTE_OPEN = 89
 ECK = 0x03
+
 
 class MP4000Registers(object):
     TOTAL = 3
@@ -52,8 +61,8 @@ class MP4000Registers(object):
     PAYMENTS = 49
     CCF = 55
     PRINTER_INFO = 60
-    SECOND_TO_TILL = 71 # Secons that remains to generate Z report
-    DAY_TOTAL = 77 # Ventas brutas diarias
+    SECOND_TO_TILL = 71  # Secons that remains to generate Z report
+    DAY_TOTAL = 77  # Ventas brutas diarias
     PRINTER_SENSORS = 254
 
     # (size, bcd)
@@ -88,8 +97,6 @@ class MP4000Registers(object):
         PAYMENTS: ('620s', False),
         DAY_TOTAL: ('7s', True),
     }
-    
-
 
 
 class MP4000(MP25):
@@ -102,27 +109,27 @@ class MP4000(MP25):
     def coupon_open(self):
         """ This needs to be called before anything else """
         self._send_command(CMD_COUPON_OPEN,
-                            "%-41s%-18s%-133s" % (self._customer_name,
+                           "%-41s%-18s%-133s" % (self._customer_name,
                                                  self._customer_document,
                                                  self._customer_address))
 
     def credit_note_open(self):
         """ This needs to be called before anything else """
         # print "%-41s%-15s%-18s%-12s%-6s" % (self._customer_name, self.get_serial(),
-                            # self._customer_document, 
-                            # datetime.datetime.now().strftime('%d%m%y%H%M%S'),
-                            # '00768')
-        self._send_command(CMD_CREDIT_NOTE_OPEN, 
-                            "%-41s%-15s%-18s%-12s%-6s" % 
-                            (self._customer_name, self.get_serial(),
-                            self._customer_document, 
+        # self._customer_document,
+        # datetime.datetime.now().strftime('%d%m%y%H%M%S'),
+        # '00768')
+        self._send_command(CMD_CREDIT_NOTE_OPEN,
+                           "%-41s%-15s%-18s%-12s%-6s" %
+                           (self._customer_name, self.get_serial(),
+                            self._customer_document,
                             datetime.date.today().strftime('%d%m%y%H%M%S'),
                             '000546'))
 
     def coupon_add_item(self, code, description, price, taxcode,
                         quantity=Decimal("1.0"), unit=UnitType.EMPTY,
                         discount=Decimal("0.0"), markup=Decimal("0.0"),
-                        unit_desc="", refund = False):
+                        unit_desc="", refund=False):
         """ The ECF must be configured to round instead to truncate.
         When truncating, the value may be lower then the one calculated
         by stoq. In this case, the payments added will be higher than the ECF
@@ -205,7 +212,7 @@ class MP4000(MP25):
 
             log.debug("<<< %r (%d bytes)" % (data, len(data)))
             return data
-            
+
     def _get_bytes(self, number):
         """
         This funtion is in case the command is 2 bytes length
@@ -222,7 +229,7 @@ class MP4000(MP25):
                 number = number >> 8
                 ret = chr(b) + ret
         return ret
-        
+
     def _send_command(self, command, *args, **kwargs):
         fmt = ''
         if 'response' in kwargs:
@@ -234,9 +241,9 @@ class MP4000(MP25):
 
         if kwargs:
             raise TypeError("Invalid kwargs: %r" % (kwargs,))
-        
+
         cmd = self._get_bytes(command)
-            
+
         for arg in args:
             if isinstance(arg, int):
                 cmd += self._get_bytes(arg)
@@ -245,7 +252,8 @@ class MP4000(MP25):
             else:
                 raise NotImplementedError(type(arg))
         data = self._create_packet(cmd)
-        log.debug('Command string: %s', ' '.join([str(hex(ord(char))) for char in cmd]))
+        log.debug('Command string: %s', ' '.join(
+            [str(hex(ord(char))) for char in cmd]))
         self.write(data)
 
         format = self.reply_format % fmt
@@ -254,8 +262,8 @@ class MP4000(MP25):
         retval = struct.unpack(format, reply)
         if raw:
             return retval
-       # If just reading a register
-        if command != CMD_READ_REGISTER:              
+        # If just reading a register
+        if command != CMD_READ_REGISTER:
             self._check_error(retval)
 
         response = retval[1:-self.status_size]
@@ -274,7 +282,7 @@ class MP4000(MP25):
     def _get_status_printer(self):
         ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
         if st1:
-            raise 
+            raise
         return val
 
     def _read_register(self, reg):
@@ -286,25 +294,25 @@ class MP4000(MP25):
         if bcd:
             value = bcd2dec(value)
         return value
-    
+
     def _get_nit(self):
         return self._read_register(self.registers.NIT)
-        
+
     def _get_totalizers(self):
         return self._send_command(CMD_READ_TOTALIZERS, response='219s')
 
     def _get_last_z(self):
         return self._send_command(CMD_LAST_Z, response='324s')
-        
+
     def get_tax_constants(self):
-#        status = self._read_register(self.registers.TOTALIZERS)
-#        status = struct.unpack('>H', status)[0]
+        #        status = self._read_register(self.registers.TOTALIZERS)
+        #        status = struct.unpack('>H', status)[0]
 
         ackd, data = self._send_command(CMD_READ_TAXCODES, response='b32s')
 
         constants = []
         for i in range(16):
-            value = bcd2dec(data[i*2:i*2+2])
+            value = bcd2dec(data[i * 2:i * 2 + 2])
             if not value:
                 continue
 
@@ -313,14 +321,14 @@ class MP4000(MP25):
 #            else:
 #                tax = TaxType.SERVICE
             constants.append((tax,
-                              '%02d' % (i+1,),
+                              '%02d' % (i + 1,),
                               Decimal(value) / 100))
 
         constants.extend([
             (TaxType.SUBSTITUTION, 'FF', None),
-            (TaxType.EXEMPTION,    'II', None),
-            (TaxType.NONE,         'NN', None),
-            ])
+            (TaxType.EXEMPTION, 'II', None),
+            (TaxType.NONE, 'NN', None),
+        ])
 
         return constants
 
@@ -336,12 +344,13 @@ class MP4000(MP25):
         Return printer serial number
         """
         return self._read_register(self.registers.SERIAL).strip().strip('\x00')
-    
+
     def _get_coupon_number(self):
         """
         Get the last coupon number
         """
-        coupon_number = self._send_command(CMD_GET_COUPON_NUMBER, response='3s')
+        coupon_number = self._send_command(
+            CMD_GET_COUPON_NUMBER, response='3s')
         return bcd2dec(coupon_number)
 
     def _get_printer_sensors(self):
@@ -350,63 +359,64 @@ class MP4000(MP25):
         """
         ps = self._read_register(self.registers.PRINTER_SENSORS)
         ret = {}
-        ret.update({1 : ("Tapa abierta", ps & 1 == 1)})
-        ret.update({2 : ("Tampa abierta", ps & 2 == 1)})
-        ret.update({3 : ("Sin papel", ps & 4 == 1)})
+        ret.update({1: ("Tapa abierta", ps & 1 == 1)})
+        ret.update({2: ("Tampa abierta", ps & 2 == 1)})
+        ret.update({3: ("Sin papel", ps & 4 == 1)})
 
-        ret.update({4 : ("Poco papel", ps & 8 == 1)})
-        ret.update({5 : ("Sensor de gaveta", ps & 16 == 1)})
-        ret.update({6 : ("Tecla de papel presionada ", ps & 64 == 1)})
-        ret.update({6 : ("Jumper de mantenimiento ", ps & 128 == 1)})
+        ret.update({4: ("Poco papel", ps & 8 == 1)})
+        ret.update({5: ("Sensor de gaveta", ps & 16 == 1)})
+        ret.update({6: ("Tecla de papel presionada ", ps & 64 == 1)})
+        ret.update({6: ("Jumper de mantenimiento ", ps & 128 == 1)})
         return ret
-    
+
     def _set_fiscal_app(self, name):
         """
         This function can update application name that will be
         printed at the end of boucher
         """
         self._send_command(CMD_FISCAL_APP, "%-84s" % (name))
-    
+
     def _get_uptime(self):
         """
         Return the time that the printer has been on
         """
         return self._read_register(self.registers.OPERATION_TIME)
-    
-    def _set_paper_sensor(self, state = True):
+
+    def _set_paper_sensor(self, state=True):
         """
         Set almost out of paper sensor
         """
         v = '1'
         if state:
             v = '0'
-        return self._send_command(CMD_PAPER_SENSOR, "%1s"%(v), raw=True)
+        return self._send_command(CMD_PAPER_SENSOR, "%1s" % (v), raw=True)
 
     def _set_z_time_limit(self, time):
         """
         Set Z time limit
         """
-        return self._send_command(CMD_Z_TIME_LIMIT, "%02d"%(time), raw=True)
+        return self._send_command(CMD_Z_TIME_LIMIT, "%02d" % (time), raw=True)
 
     def _set_td_ecv(self, till, store):
         """
         Set till and store numbers
         """
-        return self._send_command(CMD_TD_ECV, "%04d%04d"%(till, store), raw=True)
-        
+        return self._send_command(CMD_TD_ECV, "%04d%04d" % (till, store), raw=True)
+
     def _add_payment_method(self, name):
         return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
-                                 '%-16s1' % name, raw=True)
-    
-    def _read_transactions(self, start, end, dest = 'R'):
+                                  '%-16s1' % name, raw=True)
+
+    def _read_transactions(self, start, end, dest='R'):
         """
         Returns a string with all transactions from a given range
         """
         cmd = self._get_bytes(CMD_TRANSACTIONS)
-        if isinstance(start, datetime.datetime) and isinstance(end, datetime.datetime): 
-            cmd += '%6s%6s'%(start.strftime('%d%m%y'), end.strftime('%d%m%y'))
+        if isinstance(start, datetime.datetime) and isinstance(end, datetime.datetime):
+            cmd += '%6s%6s' % (start.strftime('%d%m%y'),
+                               end.strftime('%d%m%y'))
         else:
-            cmd += '00%04d00%04d'%(start, end)
+            cmd += '00%04d00%04d' % (start, end)
         cmd += dest
         print cmd
         data = self._create_packet(cmd)
@@ -429,47 +439,51 @@ class MP4000(MP25):
         """
         res = self._read_transactions(start, end)
         res = res.split('\n')
-        data = {'invoices' : []}
+        data = {'invoices': []}
         f = {}
         for t in res[11:]:
-            conts = [ m for m in t.split(' ') if m]
+            conts = [m for m in t.split(' ') if m]
             if conts:
                 # print "Linea ", conts
                 if 'COO:' in conts[0]:
                     if f:
                         data['invoices'].append(f)
-                    f = {'payments':{}, 'cancel':{}}
+                    f = {'payments': {}, 'cancel': {}}
                     temp = conts[0].split(':')
-                    f.update({temp[0]:temp[1]})
+                    f.update({temp[0]: temp[1]})
                     temp = conts[1].split(':')
-                    f.update({temp[0]:temp[1]})
-                    temp = ['date', datetime.datetime.strptime('%s %s'%(conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
-                    f.update({temp[0]:temp[1]})
-                elif re.search(r'^(-|)[0-9]{1,},[0-9]{1,}$', conts[-1]) and conts[-2] =='=':
-                    temp = [' '.join(conts[:-2]), float(conts[-1].replace(',', '.'))]
-                    f['payments'].update({temp[0]:temp[1]})
+                    f.update({temp[0]: temp[1]})
+                    temp = ['date', datetime.datetime.strptime(
+                        '%s %s' % (conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
+                    f.update({temp[0]: temp[1]})
+                elif re.search(r'^(-|)[0-9]{1,},[0-9]{1,}$', conts[-1]) and conts[-2] == '=':
+                    temp = [' '.join(conts[:-2]),
+                            float(conts[-1].replace(',', '.'))]
+                    f['payments'].update({temp[0]: temp[1]})
                 elif 'ANULACI' in conts[0]:
                     temp = conts[1].split(':')
-                    f['cancel'].update({temp[0]:temp[1]})
-                    temp = ['date', datetime.datetime.strptime('%s %s'%(conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
-                    f['cancel'].update({temp[0]:temp[1]})
+                    f['cancel'].update({temp[0]: temp[1]})
+                    temp = ['date', datetime.datetime.strptime(
+                        '%s %s' % (conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
+                    f['cancel'].update({temp[0]: temp[1]})
                 elif 'Factura' in conts[0] and 'Inicial' in conts[1]:
-                    data.update({'start':int(conts[2])})
+                    data.update({'start': int(conts[2])})
                 elif 'Factura' in conts[0] and 'Final' in conts[1]:
-                    data.update({'end':int(conts[2])})
-                elif len(conts) > 3 and 'Facturas' in conts[2] and 'mero' in conts[0] and 'Anuladas' in conts[3]:
-                    data.update({'ncancels':int(conts[4])})
+                    data.update({'end': int(conts[2])})
+                elif len(conts) > 3 and 'Facturas' in conts[2] and 'mero' in conts[0] \
+                        and 'Anuladas' in conts[3]:
+                    data.update({'ncancels': int(conts[4])})
                 elif len(conts) > 3 and 'Facturas' in conts[2] and 'mero' in conts[0]:
-                    data.update({'ninvoices':int(conts[3])})
+                    data.update({'ninvoices': int(conts[3])})
                 elif 'VERSI' in conts[0] and 'CAJA' in conts[1] and 'TIENDA' in conts[2]:
                     temp = conts[1].split(':')
-                    data.update({'till':int(temp[1])})
+                    data.update({'till': int(temp[1])})
                     temp = conts[2].split(':')
-                    data.update({'store':int(temp[1])})
+                    data.update({'store': int(temp[1])})
         if f:
             data['invoices'].append(f)
         return data
-        
+
     def get_capabilities(self):
         """
         Fields size for this printer
@@ -488,35 +502,34 @@ class MP4000(MP25):
             customer_address=Capability(max_len=133),
             add_cash_value=Capability(min_size=0.1, digits=12, decimals=2),
             remove_cash_value=Capability(min_size=0.1, digits=12, decimals=2),
-            )
-        
-    
+        )
+
+
 class MP4000Status(object):
     PENDING_REDUCE_Z = 66
 
     st1_codes = {
-        128:(OutofPaperError(_("Printer is out of paper"))),
+        128: (OutofPaperError(_("Printer is out of paper"))),
         64: (AlmostOutofPaper(_("Printer almost out of paper"))),
         32: (PrinterError(_("Printer clock error"))),
         16: (PrinterError(_("Printer in error state"))),
-        8:  (CommandError(_("First data value in CMD is not ESC (1BH)"))),
-        4:  (CommandError(_("Nonexistent command"))),
-        2:  (CouponOpenError(_("Printer has a coupon currently open"))),
-        1:  (CommandError(_("Invalid CMD parameter number")))
-        }
-
+        8: (CommandError(_("First data value in CMD is not ESC (1BH)"))),
+        4: (CommandError(_("Nonexistent command"))),
+        2: (CouponOpenError(_("Printer has a coupon currently open"))),
+        1: (CommandError(_("Invalid CMD parameter number")))
+    }
 
     st2_codes = {
-        128:(CommandError(_("Invalid CMD parameter"))),
+        128: (CommandError(_("Invalid CMD parameter"))),
         64: (HardwareFailure(_("Fiscal memory is full"))),
         32: (HardwareFailure(_("Error in CMOS memory"))),
         16: (PrinterError(_("Given tax is not programmed on the printer"))),
-        8:  (DriverError(_("No available tax slot"))),
-        4:  (CancelItemError(_("The item wasn't added in the coupon or can't "
+        8: (DriverError(_("No available tax slot"))),
+        4: (CancelItemError(_("The item wasn't added in the coupon or can't "
                               "be cancelled"))),
-        2:  (PrinterError(_("Owner data (CGC/IE) not programmed on the printer"))),
-        1:  (CommandError(_("Command not executed")))
-        }
+        2: (PrinterError(_("Owner data (CGC/IE) not programmed on the printer"))),
+        1: (CommandError(_("Command not executed")))
+    }
 
     st3_codes = {
         7: (CouponOpenError(_("Coupon already Open"))),
@@ -527,7 +540,7 @@ class MP4000Status(object):
         17: (DriverError(_("Coupon with no items"))),
         20: (PaymentAdditionError(_("Payment method not recognized"))),
         22: (PaymentAdditionError(_("Isn't possible add more payments since"
-                                     "the coupon total value already was "
+                                    "the coupon total value already was "
                                     "reached"))),
         23: (DriverError(_("Coupon isn't totalized yet"))),
         43: (CouponNotOpenError(_("Printer not initialized"))),
@@ -549,7 +562,7 @@ class MP4000Status(object):
         176: (DriverError(_("Invalid date")))}
 
     def __init__(self, reply):
-#        print "Status ", reply
+        #        print "Status ", reply
         self.st = reply[0]
         self.st_descr = len(reply) > 3 and reply[1:-2] or []
         self.st1, self.st2 = reply[-2:]
@@ -565,10 +578,10 @@ class MP4000Status(object):
 
     def check_error(self):
         log.debug("status: st=%s st1=%s st2=%s" %
-                    (self.st, self.st1, self.st2))
+                  (self.st, self.st1, self.st2))
         # print "status: st=%s st1=%s st2=%s" % (self.st_descr, self.st1, self.st2)
-        #if self.st != ACK:
-            
+        # if self.st != ACK:
+
         if self.st1 != 0:
             self._check_error_in_dict(self.st1_codes, self.st1)
 
@@ -579,5 +592,3 @@ class MP4000Status(object):
 #            if self.st2 & 1 and self.st_descr:
 #                if self.st_descr in self.st3_codes:
 #                    raise self.st3_codes[self.st3]
-
-
