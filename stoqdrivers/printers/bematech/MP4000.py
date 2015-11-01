@@ -4,16 +4,19 @@ Created on Thu Sep  6 17:12:46 2012
 
 @author: truiz
 """
-
+import logging
 from stoqdrivers.printers.bematech.MP25 import MP25
 from stoqdrivers.printers.bematech.MP25 import *
 from stoqdrivers.exceptions import AlmostOutofPaper
 import re
 import datetime
-log = Logger('stoqdrivers.bematech.MP4000')
+
+
+log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
-CMD_ADD_ITEM = 0x3e47 # this is different from mp25
+# CMD_ADD_ITEM = 0x3e47 # this is different from mp25
+CMD_ADD_ITEM = 0x09 # Simple add item
 CMD_FISCAL_APP = 0x3e40 # set fiscal app name
 CMD_PAPER_SENSOR = 0x3e3d # set fiscal app name
 CMD_Z_TIME_LIMIT = 90
@@ -130,26 +133,58 @@ class MP4000(MP25):
         else:
             unit = self._consts.get_value(unit)
 
-        data = ("%02s"     # taxcode
-                "%011d"    # value
-                "%07d"     # quantity
-                "%010d"    # discount
-                "%010d"    # increment
-                "%02s"     # 01
-                "%020s"    # padding
-                "%2s"      # unit
-                "%-s\0"  # code
-                "%-s\0"    # description
-                % ( taxcode,
-                    price * Decimal("1e3"),
-                    quantity * Decimal("1e3"),
-                    discount,
-                    0, 1, 0,
-                    unit,
-                    code,
-                    description))
+        # data = ("%02s"     # taxcode
+        #         "%011d"    # value
+        #         "%07d"     # quantity
+        #         "%010d"    # discount
+        #         "%010d"    # increment
+        #         "%02s"     # 01
+        #         "%020s"    # padding
+        #         "%2s"      # unit
+        #         "%-s\0"  # code
+        #         "%-s\0"    # description
+        #         % ( taxcode,
+        #             price * Decimal("1e3"),
+        #             quantity * Decimal("1e3"),
+        #             discount,
+        #             0, 1, 0,
+        #             unit,
+        #             code,
+        #             description))
+
+        data = (
+            "%-13s"  # code
+            "%29s"  # description
+            "%02s"     # taxcode
+            "%07d"     # quantity
+            "%08d"     # value
+            "%08d"    # discount
+        ) % (code, description, taxcode, quantity * Decimal("1e3"),
+             price * Decimal("1e2"), discount * Decimal("1e2"))
         self._send_command(refund and CMD_ADD_REFUND or CMD_ADD_ITEM, data)
         return self._get_last_item_id()
+
+    def coupon_totalize(self, discount=currency(0), markup=currency(0),
+                        taxcode=TaxType.NONE):
+
+        if discount:
+            type = 'd'
+            value = discount
+        elif markup:
+            type = 'a'
+            value = markup
+        else:
+            # Just to use the StartClosingCoupon in case of no discount/markup
+            # be specified.
+            type = 'D'
+            value = 0
+
+        self._send_command(CMD_COUPON_TOTALIZE, '%s%04d' % (
+            type, int(value * Decimal('1e2'))))
+
+        totalized_value = self._get_coupon_subtotal()
+        self.remainder_value = totalized_value
+        return totalized_value
 
     def _read_reply(self, size):
         a = 0
@@ -210,6 +245,7 @@ class MP4000(MP25):
             else:
                 raise NotImplementedError(type(arg))
         data = self._create_packet(cmd)
+        log.debug('Command string: %s', ' '.join([str(hex(ord(char))) for char in cmd]))
         self.write(data)
 
         format = self.reply_format % fmt
