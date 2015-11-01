@@ -24,11 +24,12 @@ install:
   - pip install .
 
   # Installing testing requirements
-  - pip install coveralls  # Testing packages
+  - pip install coveralls pyflakes nose nosexcover  # Testing packages
+  - rm -rf "${TRAVIS_BUILD_DIR}/utils" && git clone https://github.com/stoq/stoq-utils.git ${TRAVIS_BUILD_DIR}/utils
 
 script:
   - coverage run ${TRAVIS_BUILD_DIR}/tests/check_ifaces_impl.py
-  # TODO: Enable coupon test. (How are executed?)
+  - make coverage
 
 after_success:
   - coveralls
