@@ -533,6 +533,11 @@ class BematechMP2100(_TestCoupon, _BaseTest):
     model = 'MP2100'
 
 
+class BematechMP4000(_TestCoupon, _BaseTest):
+    brand = 'bematech'
+    model = 'MP4000'
+
+
 class FiscNet(_TestCoupon, _BaseTest):
     brand = "fiscnet"
     model = "FiscNetECF"
