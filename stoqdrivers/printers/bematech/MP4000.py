@@ -133,24 +133,34 @@ class MP4000(MP25):
         else:
             unit = self._consts.get_value(unit)
 
-        data = ("%02s"     # taxcode
-                "%011d"    # value
-                "%07d"     # quantity
-                "%010d"    # discount
-                "%010d"    # increment
-                "%02s"     # 01
-                "%020s"    # padding
-                "%2s"      # unit
-                "%-s\0"  # code
-                "%-s\0"    # description
-                % ( taxcode,
-                    price * Decimal("1e3"),
-                    quantity * Decimal("1e3"),
-                    discount,
-                    0, 1, 0,
-                    unit,
-                    code,
-                    description))
+        # data = ("%02s"     # taxcode
+        #         "%011d"    # value
+        #         "%07d"     # quantity
+        #         "%010d"    # discount
+        #         "%010d"    # increment
+        #         "%02s"     # 01
+        #         "%020s"    # padding
+        #         "%2s"      # unit
+        #         "%-s\0"  # code
+        #         "%-s\0"    # description
+        #         % ( taxcode,
+        #             price * Decimal("1e3"),
+        #             quantity * Decimal("1e3"),
+        #             discount,
+        #             0, 1, 0,
+        #             unit,
+        #             code,
+        #             description))
+
+        data = (
+            "%-13s"  # code
+            "%29s"  # description
+            "%02s"     # taxcode
+            "%07d"     # quantity
+            "%08d"     # value
+            "%08d"    # discount
+        ) % (code, description, taxcode, quantity * Decimal("1e3"),
+             price * Decimal("1e2"), discount * Decimal("1e2"))
         self._send_command(refund and CMD_ADD_REFUND or CMD_ADD_ITEM, data)
         return self._get_last_item_id()
 
@@ -213,7 +223,7 @@ class MP4000(MP25):
             else:
                 raise NotImplementedError(type(arg))
         data = self._create_packet(cmd)
-        print 'Command string: %s', ' '.join([str(hex(ord(char))) for char in cmd])
+        print 'Command string: ', ' '.join([str(hex(ord(char))) for char in cmd])
         self.write(data)
 
         format = self.reply_format % fmt
