@@ -18,7 +18,7 @@ from stoqdrivers.printers.bematech.MP25 import (
     CouponOpenError, CouponTotalizeError, Decimal, DriverError,
     HardwareFailure, ItemAdditionError, OutofPaperError, PaymentAdditionError,
     PrinterError, PrinterOfflineError, TaxType, UnitType, bcd2dec, currency,
-    stoqdrivers_gettext, struct, val)
+    stoqdrivers_gettext, struct)
 
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
@@ -279,11 +279,14 @@ class MP4000(MP25):
             val = self._send_command(CMD_STATUS, raw=True)
         return MP4000Status(val)
 
+    """
+    val is undefined and method is never used
     def _get_status_printer(self):
         ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
         if st1:
             raise
-        return val
+        return val  # val is undefined
+    """
 
     def _read_register(self, reg):
         try:
