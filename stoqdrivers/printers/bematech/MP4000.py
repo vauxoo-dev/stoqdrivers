@@ -595,3 +595,8 @@ class MP4000Status(object):
 #            if self.st2 & 1 and self.st_descr:
 #                if self.st_descr in self.st3_codes:
 #                    raise self.st3_codes[self.st3]
+
+    def cancel_last_coupon(self):
+        """Cancel the last non fiscal coupon or the last sale."""
+        #XXX MP4000 does not support this
+        self.coupon_cancel()
