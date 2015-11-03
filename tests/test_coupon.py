@@ -533,6 +533,15 @@ class BematechMP2100(_TestCoupon, _BaseTest):
     model = 'MP2100'
 
 
+class BematechMP4000(_TestCoupon, _BaseTest):
+    brand = 'bematech'
+    model = 'MP4000'
+
+    def get_card_constant(self):
+        return self._get_constant(self._device.get_payment_constants(),
+                                  u'Efectivo')
+
+
 class FiscNet(_TestCoupon, _BaseTest):
     brand = "fiscnet"
     model = "FiscNetECF"
