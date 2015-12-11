@@ -12,7 +12,7 @@ import re
 from stoqdrivers.exceptions import AlmostOutofPaper
 from stoqdrivers.printers.bematech.MP25 import (
     CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER,
-    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER, CMD_READ_TAXCODES,
+    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER,
     CMD_READ_TOTALIZERS, CMD_STATUS, MP25, RETRIES_BEFORE_TIMEOUT,
     CancelItemError, Capability, CommandError, CouponNotOpenError,
     CouponOpenError, CouponTotalizeError, Decimal, DriverError,
@@ -23,8 +23,8 @@ from stoqdrivers.printers.bematech.MP25 import (
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
-# CMD_ADD_ITEM = 0x3e47 # this is different from mp25
-CMD_ADD_ITEM = 0x09  # Simple add item
+CMD_ADD_ITEM = 0x3e47 # this is different from mp25
+# CMD_ADD_ITEM = 0x09  # Simple add item
 CMD_FISCAL_APP = 0x3e40  # set fiscal app name
 CMD_PAPER_SENSOR = 0x3e3d  # set fiscal app name
 CMD_Z_TIME_LIMIT = 90
@@ -34,6 +34,7 @@ CMD_TRANSACTIONS = 0x3e4737  # get transactions from a given period
 CMD_ADD_REFUND = 0x3e4733  # article return
 CMD_CREDIT_NOTE_OPEN = 89
 ECK = 0x03
+CMD_READ_TAXCODES = 0x1a
 
 
 class MP4000Registers(object):
@@ -140,34 +141,34 @@ class MP4000(MP25):
         else:
             unit = self._consts.get_value(unit)
 
-        # data = ("%02s"     # taxcode
-        #         "%011d"    # value
-        #         "%07d"     # quantity
-        #         "%010d"    # discount
-        #         "%010d"    # increment
-        #         "%02s"     # 01
-        #         "%020s"    # padding
-        #         "%2s"      # unit
-        #         "%-s\0"  # code
-        #         "%-s\0"    # description
-        #         % ( taxcode,
-        #             price * Decimal("1e3"),
-        #             quantity * Decimal("1e3"),
-        #             discount,
-        #             0, 1, 0,
-        #             unit,
-        #             code,
-        #             description))
-
-        data = (
-            "%-13s"  # code
-            "%29s"  # description
-            "%02s"     # taxcode
-            "%07d"     # quantity
-            "%08d"     # value
-            "%08d"    # discount
-        ) % (code, description, taxcode, quantity * Decimal("1e3"),
-             price * Decimal("1e2"), discount * Decimal("1e2"))
+        data = ("%02s"     # taxcode       (2)
+                "%011d"    # value       (8+3) int+dec
+                "%07d"     # quantity    (4+3) int+dec
+                "%010d"    # discount    (8+2) int+dec
+                "%010d"    # increment   (8+2) int+dec
+                "%02d"     # fixed 01      (2)
+                "%020d"    # zero padding (20)
+                "%2s"      # unit          (2)
+                "%-s\0"    # code         (49) max
+                "%-s\0"    # description (201) max
+                % (taxcode[:2],
+                   price * Decimal("1e3"),
+                   quantity * Decimal("1e3"),
+                   discount * Decimal("1e2"),
+                   0, 1, 0, # increment, fixed 01, zero padding
+                   unit[:2],
+                   code,
+                   description))
+        # Uncomment if use CMD_ADD_ITEM: 0x09 (discontinued)
+        # data = (
+        #     "%-13s"  # code
+        #     "%29s"  # description
+        #     "%02s"     # taxcode
+        #     "%07d"     # quantity
+        #     "%08d"     # value
+        #     "%08d"    # discount
+        # ) % (code, description, taxcode, quantity * Decimal("1e3"),
+        #      price * Decimal("1e2"), discount * Decimal("1e2"))
         self._send_command(refund and CMD_ADD_REFUND or CMD_ADD_ITEM, data)
         return self._get_last_item_id()
 
