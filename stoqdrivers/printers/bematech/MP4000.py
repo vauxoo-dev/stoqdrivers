@@ -12,7 +12,7 @@ import re
 from stoqdrivers.exceptions import AlmostOutofPaper
 from stoqdrivers.printers.bematech.MP25 import (
     CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER,
-    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER, CMD_READ_TAXCODES,
+    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER,
     CMD_READ_TOTALIZERS, CMD_STATUS, MP25, RETRIES_BEFORE_TIMEOUT,
     CancelItemError, Capability, CommandError, CouponNotOpenError,
     CouponOpenError, CouponTotalizeError, Decimal, DriverError,
@@ -23,8 +23,8 @@ from stoqdrivers.printers.bematech.MP25 import (
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
 
-# CMD_ADD_ITEM = 0x3e47 # this is different from mp25
-CMD_ADD_ITEM = 0x09  # Simple add item
+CMD_ADD_ITEM = 0x3e47  # this is different from mp25
+# CMD_ADD_ITEM = 0x09  # Simple add item
 CMD_FISCAL_APP = 0x3e40  # set fiscal app name
 CMD_PAPER_SENSOR = 0x3e3d  # set fiscal app name
 CMD_Z_TIME_LIMIT = 90
@@ -34,6 +34,7 @@ CMD_TRANSACTIONS = 0x3e4737  # get transactions from a given period
 CMD_ADD_REFUND = 0x3e4733  # article return
 CMD_CREDIT_NOTE_OPEN = 89
 ECK = 0x03
+CMD_READ_TAXCODES = 0x1a
 
 
 class MP4000Registers(object):
@@ -115,7 +116,8 @@ class MP4000(MP25):
 
     def credit_note_open(self):
         """ This needs to be called before anything else """
-        # print "%-41s%-15s%-18s%-12s%-6s" % (self._customer_name, self.get_serial(),
+        # print "%-41s%-15s%-18s%-12s%-6s" % (self._customer_name,
+        # self.get_serial(),
         # self._customer_document,
         # datetime.datetime.now().strftime('%d%m%y%H%M%S'),
         # '00768')
@@ -140,34 +142,34 @@ class MP4000(MP25):
         else:
             unit = self._consts.get_value(unit)
 
-        # data = ("%02s"     # taxcode
-        #         "%011d"    # value
-        #         "%07d"     # quantity
-        #         "%010d"    # discount
-        #         "%010d"    # increment
-        #         "%02s"     # 01
-        #         "%020s"    # padding
-        #         "%2s"      # unit
-        #         "%-s\0"  # code
-        #         "%-s\0"    # description
-        #         % ( taxcode,
-        #             price * Decimal("1e3"),
-        #             quantity * Decimal("1e3"),
-        #             discount,
-        #             0, 1, 0,
-        #             unit,
-        #             code,
-        #             description))
-
-        data = (
-            "%-13s"  # code
-            "%29s"  # description
-            "%02s"     # taxcode
-            "%07d"     # quantity
-            "%08d"     # value
-            "%08d"    # discount
-        ) % (code, description, taxcode, quantity * Decimal("1e3"),
-             price * Decimal("1e2"), discount * Decimal("1e2"))
+        data = ("%02s"     # taxcode       (2)
+                "%011d"    # value       (8+3) int+dec
+                "%07d"     # quantity    (4+3) int+dec
+                "%010d"    # discount    (8+2) int+dec
+                "%010d"    # increment   (8+2) int+dec
+                "%02d"     # fixed 01      (2)
+                "%020d"    # zero padding (20)
+                "%2s"      # unit          (2)
+                "%-s\0"    # code         (49) max
+                "%-s\0"    # description (201) max
+                % (taxcode[:2],
+                   price * Decimal("1e3"),
+                   quantity * Decimal("1e3"),
+                   discount * Decimal("1e2"),
+                   0, 1, 0,  # increment, fixed 01, zero padding
+                   unit[:2],
+                   code,
+                   description))
+        # Uncomment if use CMD_ADD_ITEM: 0x09 (discontinued)
+        # data = (
+        #     "%-13s"  # code
+        #     "%29s"  # description
+        #     "%02s"     # taxcode
+        #     "%07d"     # quantity
+        #     "%08d"     # value
+        #     "%08d"    # discount
+        # ) % (code, description, taxcode, quantity * Decimal("1e3"),
+        #      price * Decimal("1e2"), discount * Decimal("1e2"))
         self._send_command(refund and CMD_ADD_REFUND or CMD_ADD_ITEM, data)
         return self._get_last_item_id()
 
@@ -279,14 +281,12 @@ class MP4000(MP25):
             val = self._send_command(CMD_STATUS, raw=True)
         return MP4000Status(val)
 
-    """
-    val is undefined and method is never used
-    def _get_status_printer(self):
-        ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
-        if st1:
-            raise
-        return val  # val is undefined
-    """
+    # TODO: check why val is undefined and method is never used
+    # def _get_status_printer(self):
+    #     ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
+    #     if st1:
+    #         raise
+    #     return val  # val is undefined
 
     def _read_register(self, reg):
         try:
@@ -404,7 +404,8 @@ class MP4000(MP25):
         """
         Set till and store numbers
         """
-        return self._send_command(CMD_TD_ECV, "%04d%04d" % (till, store), raw=True)
+        return self._send_command(CMD_TD_ECV, "%04d%04d" % (till, store),
+                                  raw=True)
 
     def _add_payment_method(self, name):
         return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
@@ -415,13 +416,14 @@ class MP4000(MP25):
         Returns a string with all transactions from a given range
         """
         cmd = self._get_bytes(CMD_TRANSACTIONS)
-        if isinstance(start, datetime.datetime) and isinstance(end, datetime.datetime):
+        if isinstance(start, datetime.datetime) and \
+                isinstance(end, datetime.datetime):
             cmd += '%6s%6s' % (start.strftime('%d%m%y'),
                                end.strftime('%d%m%y'))
         else:
             cmd += '00%04d00%04d' % (start, end)
         cmd += dest
-        print cmd
+        # print cmd
         data = self._create_packet(cmd)
         self.write(data)
         if dest == 'I':
@@ -459,7 +461,8 @@ class MP4000(MP25):
                     temp = ['date', datetime.datetime.strptime(
                         '%s %s' % (conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
                     f.update({temp[0]: temp[1]})
-                elif re.search(r'^(-|)[0-9]{1,},[0-9]{1,}$', conts[-1]) and conts[-2] == '=':
+                elif re.search(r'^(-|)[0-9]{1,},[0-9]{1,}$', conts[-1]) and \
+                        conts[-2] == '=':
                     temp = [' '.join(conts[:-2]),
                             float(conts[-1].replace(',', '.'))]
                     f['payments'].update({temp[0]: temp[1]})
@@ -473,12 +476,14 @@ class MP4000(MP25):
                     data.update({'start': int(conts[2])})
                 elif 'Factura' in conts[0] and 'Final' in conts[1]:
                     data.update({'end': int(conts[2])})
-                elif len(conts) > 3 and 'Facturas' in conts[2] and 'mero' in conts[0] \
-                        and 'Anuladas' in conts[3]:
+                elif len(conts) > 3 and 'Facturas' in conts[2] and \
+                        'mero' in conts[0] and 'Anuladas' in conts[3]:
                     data.update({'ncancels': int(conts[4])})
-                elif len(conts) > 3 and 'Facturas' in conts[2] and 'mero' in conts[0]:
+                elif len(conts) > 3 and 'Facturas' in conts[2] and \
+                        'mero' in conts[0]:
                     data.update({'ninvoices': int(conts[3])})
-                elif 'VERSI' in conts[0] and 'CAJA' in conts[1] and 'TIENDA' in conts[2]:
+                elif 'VERSI' in conts[0] and 'CAJA' in conts[1] and \
+                        'TIENDA' in conts[2]:
                     temp = conts[1].split(':')
                     data.update({'till': int(temp[1])})
                     temp = conts[2].split(':')
@@ -530,7 +535,8 @@ class MP4000Status(object):
         8: (DriverError(_("No available tax slot"))),
         4: (CancelItemError(_("The item wasn't added in the coupon or can't "
                               "be cancelled"))),
-        2: (PrinterError(_("Owner data (CGC/IE) not programmed on the printer"))),
+        2: (PrinterError(_("Owner data (CGC/IE) not programmed on the "
+                           "printer"))),
         1: (CommandError(_("Command not executed")))
     }
 
@@ -554,7 +560,8 @@ class MP4000Status(object):
         91: (ItemAdditionError(_("Surcharge or discount greater than item"
                                  "value"))),
         100: (DriverError(_("Invalid date"))),
-        115: (CancelItemError(_("Item doesn't exists or already was cancelled"))),
+        115: (CancelItemError(_("Item doesn't exists or already was "
+                                "cancelled"))),
         118: (DriverError(_("Surcharge greater than item value"))),
         119: (DriverError(_("Discount greater than item value"))),
         129: (CouponOpenError(_("Invalid month"))),
@@ -582,7 +589,8 @@ class MP4000Status(object):
     def check_error(self):
         log.debug("status: st=%s st1=%s st2=%s" %
                   (self.st, self.st1, self.st2))
-        # print "status: st=%s st1=%s st2=%s" % (self.st_descr, self.st1, self.st2)
+        # print "status: st=%s st1=%s st2=%s" % (self.st_descr, self.st1,
+        # self.st2)
         # if self.st != ACK:
 
         if self.st1 != 0:
@@ -592,11 +600,11 @@ class MP4000Status(object):
             self._check_error_in_dict(self.st2_codes, self.st2)
 
             # first bit means not executed, look in st3 for more
-#            if self.st2 & 1 and self.st_descr:
-#                if self.st_descr in self.st3_codes:
-#                    raise self.st3_codes[self.st3]
+            # if self.st2 & 1 and self.st_descr:
+            #     if self.st_descr in self.st3_codes:
+            #         raise self.st3_codes[self.st3]
 
     def cancel_last_coupon(self):
         """Cancel the last non fiscal coupon or the last sale."""
-        #XXX MP4000 does not support this
+        # XXX MP4000 does not support this
         self.coupon_cancel()
