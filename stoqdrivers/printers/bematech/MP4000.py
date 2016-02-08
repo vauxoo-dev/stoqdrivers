@@ -12,13 +12,12 @@ import re
 from stoqdrivers.exceptions import AlmostOutofPaper
 from stoqdrivers.printers.bematech.MP25 import (
     CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER,
-    CMD_PROGRAM_PAYMENT_METHOD, CMD_READ_REGISTER,
-    CMD_READ_TOTALIZERS, CMD_STATUS, MP25, RETRIES_BEFORE_TIMEOUT,
-    CancelItemError, Capability, CommandError, CouponNotOpenError,
-    CouponOpenError, CouponTotalizeError, Decimal, DriverError,
-    HardwareFailure, ItemAdditionError, OutofPaperError, PaymentAdditionError,
-    PrinterError, PrinterOfflineError, TaxType, UnitType, bcd2dec, currency,
-    stoqdrivers_gettext, struct)
+    CMD_READ_REGISTER, CMD_READ_TOTALIZERS, CMD_STATUS, MP25,
+    RETRIES_BEFORE_TIMEOUT, CancelItemError, Capability, CommandError,
+    CouponNotOpenError, CouponOpenError, CouponTotalizeError, Decimal,
+    DriverError, HardwareFailure, ItemAdditionError, OutofPaperError,
+    PaymentAdditionError, PrinterError, PrinterOfflineError, TaxType, UnitType,
+    bcd2dec, currency, stoqdrivers_gettext, struct)
 
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
@@ -35,6 +34,8 @@ CMD_ADD_REFUND = 0x3e4733  # article return
 CMD_CREDIT_NOTE_OPEN = 89
 ECK = 0x03
 CMD_READ_TAXCODES = 0x1a
+CMD_PROGRAM_PAYMENT_METHOD = 0x47
+CMD_PROGRAM_MULTI_PAYMENT_METHOD = 0x49
 
 
 class MP4000Registers(object):
@@ -409,7 +410,12 @@ class MP4000(MP25):
 
     def _add_payment_method(self, name):
         return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
-                                  '%-16s1' % name, raw=True)
+                                  '%-16s1' % name[:16], raw=True)
+
+    def _add_multi_payment_method(self, payments):
+        names = ''.join(['%-16s' % name[:16] for name in payments])
+        return self._send_command(CMD_PROGRAM_MULTI_PAYMENT_METHOD,
+                                  names, raw=True)
 
     def _read_transactions(self, start, end, dest='R'):
         """
