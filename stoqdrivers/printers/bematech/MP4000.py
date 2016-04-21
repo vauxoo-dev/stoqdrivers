@@ -282,13 +282,6 @@ class MP4000(MP25):
             val = self._send_command(CMD_STATUS, raw=True)
         return MP4000Status(val)
 
-    # TODO: check why val is undefined and method is never used
-    # def _get_status_printer(self):
-    #     ack, st1, st2 = self._send_command(CMD_STATUS, raw=True)
-    #     if st1:
-    #         raise
-    #     return val  # val is undefined
-
     def _read_register(self, reg):
         try:
             fmt, bcd = self.registers.formats[reg]
@@ -361,16 +354,16 @@ class MP4000(MP25):
         """
         Read sensors status
         """
-        ps = self._read_register(self.registers.PRINTER_SENSORS)
+        sensor = self._read_register(self.registers.PRINTER_SENSORS)
         ret = {}
-        ret.update({1: ("Tapa abierta", ps & 1 == 1)})
-        ret.update({2: ("Tampa abierta", ps & 2 == 1)})
-        ret.update({3: ("Sin papel", ps & 4 == 1)})
-
-        ret.update({4: ("Poco papel", ps & 8 == 1)})
-        ret.update({5: ("Sensor de gaveta", ps & 16 == 1)})
-        ret.update({6: ("Tecla de papel presionada ", ps & 64 == 1)})
-        ret.update({6: ("Jumper de mantenimiento ", ps & 128 == 1)})
+        ret.update({0: ("Cabezal levantado", sensor & 1 == 1)})
+        ret.update({1: ("Tapa abierta", sensor & 2 == 1)})
+        ret.update({2: ("Sin papel", sensor & 4 == 1)})
+        ret.update({3: ("Poco papel", sensor & 8 == 1)})
+        ret.update({4: ("Sensor de gaveta", sensor & 16 == 1)})
+        ret.update({5: ("No existe", sensor & 32 == 1)})
+        ret.update({6: ("Tecla de papel presionada ", sensor & 64 == 1)})
+        ret.update({7: ("Jumper de mantenimiento ", sensor & 128 == 1)})
         return ret
 
     def _set_fiscal_app(self, name):
@@ -390,10 +383,10 @@ class MP4000(MP25):
         """
         Set almost out of paper sensor
         """
-        v = '1'
+        value = '1'
         if state:
-            v = '0'
-        return self._send_command(CMD_PAPER_SENSOR, "%1s" % (v), raw=True)
+            value = '0'
+        return self._send_command(CMD_PAPER_SENSOR, "%1s" % (value), raw=True)
 
     def _set_z_time_limit(self, time):
         """
@@ -409,10 +402,16 @@ class MP4000(MP25):
                                   raw=True)
 
     def _add_payment_method(self, name):
+        """
+        Set a new payment constants
+        """
         return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
                                   '%-16s1' % name[:16], raw=True)
 
     def _add_multi_payment_method(self, payments):
+        """
+        Set a list of payment constants
+        """
         names = ''.join(['%-16s' % name[:16] for name in payments])
         return self._send_command(CMD_PROGRAM_MULTI_PAYMENT_METHOD,
                                   names, raw=True)
@@ -435,12 +434,12 @@ class MP4000(MP25):
         if dest == 'I':
             return True
         res = ''
-        c = '0'
+        cha = '0'
         while True:
-            c = self.read(1)
-            if c == chr(ECK):
+            cha = self.read(1)
+            if cha == chr(ECK):
                 break
-            res += unicode(c, self.coupon_printer_charset)
+            res += unicode(cha, self.coupon_printer_charset)
         res = res[3:]
         return res
 
@@ -585,16 +584,25 @@ class MP4000Status(object):
 
     @property
     def open(self):
+        """
+        Verify if coupon is open
+        """
         return self.st1 & 2
 
     def _check_error_in_dict(self, error_codes, value):
+        """
+        Return a exception according to error code
+        """
         for key in error_codes:
             if key & value:
                 raise error_codes[key]
 
     def check_error(self):
-        log.debug("status: st=%s st1=%s st2=%s" %
-                  (self.st, self.st1, self.st2))
+        """
+        Verify printer status
+        """
+        status = "st=%s st1=%s st2=%s" % (self.st, self.st1, self.st2)
+        log.debug("status: %s", status)
         # print "status: st=%s st1=%s st2=%s" % (self.st_descr, self.st1,
         # self.st2)
         # if self.st != ACK:
