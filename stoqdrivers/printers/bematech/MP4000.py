@@ -11,13 +11,13 @@ import re
 
 from stoqdrivers.exceptions import AlmostOutofPaper
 from stoqdrivers.printers.bematech.MP25 import (
-    CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER,
-    CMD_READ_REGISTER, CMD_READ_TOTALIZERS, CMD_STATUS, MP25,
-    RETRIES_BEFORE_TIMEOUT, CancelItemError, Capability, CommandError,
-    CouponNotOpenError, CouponOpenError, CouponTotalizeError, Decimal,
-    DriverError, HardwareFailure, ItemAdditionError, OutofPaperError,
+    CMD_COUPON_OPEN, CMD_COUPON_TOTALIZE, CMD_GET_COUPON_NUMBER, CMD_STATUS,
+    CMD_READ_REGISTER, CMD_READ_TOTALIZERS, CMD_PROGRAM_PAYMENT_METHOD,
+    CMD_ADD_TAX, MP25, RETRIES_BEFORE_TIMEOUT, CancelItemError, Capability,
+    CommandError, CouponNotOpenError, CouponOpenError, CouponTotalizeError,
+    Decimal, DriverError, HardwareFailure, ItemAdditionError, OutofPaperError,
     PaymentAdditionError, PrinterError, PrinterOfflineError, TaxType, UnitType,
-    bcd2dec, currency, stoqdrivers_gettext, struct)
+    bcd2dec, bcd2hex, currency, stoqdrivers_gettext, struct)
 
 log = logging.getLogger('stoqdrivers.bematech.MP4000')
 _ = stoqdrivers_gettext
@@ -34,7 +34,6 @@ CMD_ADD_REFUND = 0x3e4733  # article return
 CMD_CREDIT_NOTE_OPEN = 89
 ECK = 0x03
 CMD_READ_TAXCODES = 0x1a
-CMD_PROGRAM_PAYMENT_METHOD = 0x47
 CMD_PROGRAM_MULTI_PAYMENT_METHOD = 0x49
 
 
@@ -52,18 +51,17 @@ class MP4000Registers(object):
     CURRENCY = 16
     FISCAL_FLAGS = 17
     EMISSION_DATE = 23
+    LAST_Z_DATE = 26
     TRUNC_FLAG = 28
-    TOTALIZERS = 29
-    PAYMENT_METHODS = 32
     SERIAL = 40
     FIRMWARE = 41
     RIF = 42
     NIT = 44
     OPERATION_TIME = 45
-    PAYMENTS = 49
+    PAYMENT_METHODS = 49
     CCF = 55
     PRINTER_INFO = 60
-    SECOND_TO_TILL = 71  # Secons that remains to generate Z report
+    GERENCIAL_TIME = 71  # Seconds that remains to close gerencial report
     DAY_TOTAL = 77  # Ventas brutas diarias
     PRINTER_SENSORS = 254
 
@@ -81,22 +79,19 @@ class MP4000Registers(object):
         NUMBER_STORE: ('2s', True),
         FISCAL_FLAGS: ('1s', False),
         EMISSION_DATE: ('6s', False),
+        LAST_Z_DATE: ('6s', False),
         TRUNC_FLAG: ('1s', False),
-        TOTALIZERS: ('2s', True),
-        #  1 + (52 * 16) + (52 * 10) + (52 * 10) + (52 * 1)
-        #  1 + 832 + 520 + 520 + 52: 1925
-        PAYMENT_METHODS: ('b832s520s520s52s', False),
+        PAYMENT_METHODS: ('620s', False),
         SERIAL: ('20s', False),
         FIRMWARE: ('3s', True),
         CCF: ('3s', True),
-        SECOND_TO_TILL: ('2s', True),
+        GERENCIAL_TIME: ('4s', True),
         RIF: ('20s', False),
         NIT: ('20s', False),
         PRINTER_INFO: ('42s', False),
         CURRENCY: ('2s', False),
         PRINTER_SENSORS: ('B', False),
         OPERATION_TIME: ('2s', True),
-        PAYMENTS: ('620s', False),
         DAY_TOTAL: ('7s', True),
     }
 
@@ -299,12 +294,110 @@ class MP4000(MP25):
         return self._send_command(CMD_READ_TOTALIZERS, response='219s')
 
     def _get_last_z(self):
-        return self._send_command(CMD_LAST_Z, response='324s')
+        """
+        Read some information at the time of the last z
+
+        POS SIZE TYPE DESCRIPTION
+        0   1    BIN  00 if Z was commanded. Otherwise, is automatic.
+        1   9    BCD  Great total – 18 digits with 2 decimals
+        10  7    BCD  Overrides – 14 digits with 2 decimals
+        17  7    BCD  Discounts – 14 digits with 2 decimals
+        24  32   BCD  16 Taxes with format XX,XX%
+        56  112  BCD  16 Totalizers con 14 dígitos con 2 decimales
+        168 7    BCD  Reserved
+        175 7    BCD  Exempted – 14 digits with 2 decimals
+        182 7    BCD  Reserved
+        189 7    BCD  Withdrawals – 14 digits with 2 decimals
+        196 7    BCD  Cash endowment – 14 digits with 2 decimals
+        203 63   BCD  9 Non-fiscal totalizers – 14 digits with 2 decimals
+        266 18   BCD  9 Non-fiscal counters
+        284 3    BCD  COO - Operation Command Counter (6 digits)
+        287 3    BCD  Counter general for non-fiscal operations (6 digits)
+        290 1    BIN  Number of programmed taxes
+        291 3    BCD  Movement date. DD/MM/AA
+        294 7    BCD  Increases – 14 digits with 2 decimals. In case there are
+                      no registered last Z Report, the printer returns to the
+                      date 00/00/00.
+        301 7    BCD  Reserved
+        308 9    BCD  IVA total
+        317 7    BCD  IVA returned
+        """
+
+        res = self._send_command(CMD_LAST_Z, response='324s')
+        data = []
+        data += [('Z was commanded', bcd2dec(res[0]) == 0)]
+        data += [('Great total', bcd2dec(res[1:10]) / Decimal(100))]
+        data += [('Overrides', bcd2dec(res[10:17]) / Decimal(100))]
+        data += [('Discounts', bcd2dec(res[17:24]) / Decimal(100))]
+        taxes = []
+        for ind in range(16):
+            beg = 24 + ind * 2
+            end = beg + 2
+            taxes.append(bcd2dec(res[beg:end]) / Decimal(100))
+        data += [('Registered taxes', taxes)]
+        totalizers = []
+        for ind in range(16):
+            beg = 56 + ind * 7
+            end = beg + 7
+            totalizers.append(bcd2dec(res[beg:end]) / Decimal(100))
+        data += [('Totalizers', totalizers)]
+        data += [('Exempted amount', bcd2dec(res[175:182]) / Decimal(100))]
+        data += [('Withdrawals', bcd2dec(res[189:196]) / Decimal(100))]
+        data += [('Cash endowment', bcd2dec(res[196:203]) / Decimal(100))]
+        tnf = []
+        for ind in range(9):
+            beg = 203 + ind * 7
+            end = beg + 7
+            tnf.append(bcd2dec(res[beg:end]) / Decimal(100))
+        data += [('Non-fiscal totalizers', tnf)]
+        cnf = []
+        for ind in range(9):
+            beg = 266 + ind * 2
+            end = beg + 2
+            cnf.append(bcd2dec(res[beg:end]) / Decimal(100))
+        data += [('Non-fiscal counters', cnf)]
+        data += [('Operation Command Counter (COO)', bcd2dec(res[284:287]))]
+        data += [('Counter general for non-fiscal operations',
+                  bcd2dec(res[287:290]))]
+        data += [('Number of programmed taxes', bcd2dec(res[290]))]
+        data += [('Movement date',
+                  '%02d/%02d/%02d'
+                  % (bcd2dec(res[290]), bcd2dec(res[291]), bcd2dec(res[292])))]
+        data += [('Increases (default 00/00/00)',
+                  bcd2dec(res[294:301]) / Decimal(100))]
+        data += [('IVA total', bcd2dec(res[308:317]) / Decimal(100))]
+        data += [('IVA returned', bcd2dec(res[317:324]) / Decimal(100))]
+        return data
+
+    def _get_last_z_date(self):
+        """
+        Get date and time of the last reduce z
+        and return a datetime object
+        """
+        last_z_date = self._read_register(self.registers.LAST_Z_DATE)
+        date = bcd2hex(last_z_date)
+        return datetime.datetime(year=2000 + int(date[4:6]),
+                                 month=int(date[2:4]),
+                                 day=int(date[:2]),
+                                 hour=int(date[6:8]),
+                                 minute=int(date[8:10]),
+                                 second=int(date[10:12]),)
+
+    def has_pending_reduce(self):
+        """ Return true if there is a pending reduce (pending to close till)
+        """
+        printer_date = self._get_printer_date()
+        last_z_date = self._get_last_z_date()
+        delta_limit = datetime.timedelta(days=1)
+        return printer_date > last_z_date + delta_limit
+
+    def get_serial(self):
+        """
+        Return printer serial number
+        """
+        return self._read_register(self.registers.SERIAL).strip().strip('\x00')
 
     def get_tax_constants(self):
-        #        status = self._read_register(self.registers.TOTALIZERS)
-        #        status = struct.unpack('>H', status)[0]
-
         ackd, data = self._send_command(CMD_READ_TAXCODES, response='b32s')
 
         constants = []
@@ -312,11 +405,7 @@ class MP4000(MP25):
             value = bcd2dec(data[i * 2:i * 2 + 2])
             if not value:
                 continue
-
-#            if 1 << 15-i & status == 0:
             tax = TaxType.CUSTOM
-#            else:
-#                tax = TaxType.SERVICE
             constants.append((tax,
                               '%02d' % (i + 1,),
                               Decimal(value) / 100))
@@ -329,18 +418,59 @@ class MP4000(MP25):
 
         return constants
 
-    def has_pending_reduce(self):
+    def _set_tax_value(self, value, iva=False):
+        """ Set a single tax constant
         """
-        Extact remaining time then check if 0
-        """
-        status = self._read_register(self.registers.SECOND_TO_TILL)
-        return status == 0
+        data = ("%04d"     # tax rate
+                "%s"       # include IVA: 1 - IVA include, 0 - IVA not include
+                % (Decimal(value) * Decimal("1e2"), iva and '1' or '0'))
+        self._send_command(CMD_ADD_TAX, data, raw=True)
 
-    def get_serial(self):
+    def _get_tax_value(self, name):
+        """ Return a single tax constant
         """
-        Return printer serial number
+        constants = self.get_tax_constants()
+        for ttype, code, value in constants:
+            if code == name:
+                return value
+        return None
+
+    def _set_payment_description(self, name):
         """
-        return self._read_register(self.registers.SERIAL).strip().strip('\x00')
+        Set a new payment constant
+        """
+        return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
+                                  '%-16s1' % name[:16], raw=True)
+
+    def set_payment_constants(self, payments):
+        """
+        Set a list of payment constants
+        """
+        names = ''.join(['%-16s' % name[:16] for name in payments])
+        return self._send_command(CMD_PROGRAM_MULTI_PAYMENT_METHOD,
+                                  names, raw=True)
+
+    def get_payment_constants(self):
+        """ Return all payment methods
+        """
+        res = self._read_register(self.registers.PAYMENT_METHODS)
+        methods = []
+        for i in range(20):
+            method = res[i * 16:i * 16 + 16]
+            if method != '\x00' * 16:
+                code = '%02d' % (i + 1)
+                total = bcd2dec(res[i * 7 + 320: i * 7 + 327]) / Decimal(100)
+                last = bcd2dec(res[i * 7 + 460: i * 7 + 467]) / Decimal(100)
+                tef = res[i + 600] != '\x00'
+                methods.append({
+                    'code': code,
+                    'method': method.strip(),
+                    'total': total,
+                    'last': last,
+                    'tef': tef,
+                })
+        # just return a tuple with code and description
+        return [(m['code'], m['method']) for m in methods]
 
     def _get_coupon_number(self):
         """
@@ -400,21 +530,6 @@ class MP4000(MP25):
         """
         return self._send_command(CMD_TD_ECV, "%04d%04d" % (till, store),
                                   raw=True)
-
-    def _add_payment_method(self, name):
-        """
-        Set a new payment constants
-        """
-        return self._send_command(CMD_PROGRAM_PAYMENT_METHOD,
-                                  '%-16s1' % name[:16], raw=True)
-
-    def _add_multi_payment_method(self, payments):
-        """
-        Set a list of payment constants
-        """
-        names = ''.join(['%-16s' % name[:16] for name in payments])
-        return self._send_command(CMD_PROGRAM_MULTI_PAYMENT_METHOD,
-                                  names, raw=True)
 
     def _read_transactions(self, start, end, dest='R'):
         """
