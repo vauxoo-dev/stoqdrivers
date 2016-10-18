@@ -64,6 +64,7 @@ class MP4000Registers(object):
     GERENCIAL_TIME = 71  # Seconds that remains to close gerencial report
     DAY_TOTAL = 77  # Ventas brutas diarias
     PRINTER_SENSORS = 254
+    CNC = 255 # Credit notes counter
 
     # (size, bcd)
     formats = {
@@ -93,6 +94,7 @@ class MP4000Registers(object):
         PRINTER_SENSORS: ('B', False),
         OPERATION_TIME: ('2s', True),
         DAY_TOTAL: ('7s', True),
+        CNC: ('3s', True),
     }
 
 
@@ -369,6 +371,9 @@ class MP4000(MP25):
         data += [('IVA returned', bcd2dec(res[317:324]) / Decimal(100))]
         return data
 
+    def get_cnc(self):
+        return self._read_register(self.registers.CNC)
+
     def _get_last_z_date(self):
         """
         Get date and time of the last reduce z
@@ -376,6 +381,8 @@ class MP4000(MP25):
         """
         last_z_date = self._read_register(self.registers.LAST_Z_DATE)
         date = bcd2hex(last_z_date)
+        if not int(date):
+            return False
         return datetime.datetime(year=2000 + int(date[4:6]),
                                  month=int(date[2:4]),
                                  day=int(date[:2]),
@@ -388,6 +395,8 @@ class MP4000(MP25):
         """
         printer_date = self._get_printer_date()
         last_z_date = self._get_last_z_date()
+        if not last_z_date:
+            return False
         delta_limit = datetime.timedelta(days=1)
         return printer_date > last_z_date + delta_limit
 
