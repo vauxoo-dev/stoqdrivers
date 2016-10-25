@@ -325,6 +325,8 @@ class MP4000(MP25):
         317 7    BCD  IVA returned
         """
 
+        if not self._get_last_z_date():
+            return []
         res = self._send_command(CMD_LAST_Z, response='324s')
         data = []
         data += [('Z was commanded', bcd2dec(res[0]) == 0)]
