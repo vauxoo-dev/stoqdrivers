@@ -64,7 +64,7 @@ class MP4000Registers(object):
     GERENCIAL_TIME = 71  # Seconds that remains to close gerencial report
     DAY_TOTAL = 77  # Ventas brutas diarias
     PRINTER_SENSORS = 254
-    CNC = 255 # Credit notes counter
+    CNC = 255  # Credit notes counter
 
     # (size, bcd)
     formats = {
@@ -112,7 +112,7 @@ class MP4000(MP25):
                                                  self._customer_document,
                                                  self._customer_address))
 
-    def credit_note_open(self):
+    def credit_note_open(self, coo):
         """ This needs to be called before anything else """
         # print "%-41s%-15s%-18s%-12s%-6s" % (self._customer_name,
         # self.get_serial(),
@@ -120,11 +120,11 @@ class MP4000(MP25):
         # datetime.datetime.now().strftime('%d%m%y%H%M%S'),
         # '00768')
         self._send_command(CMD_CREDIT_NOTE_OPEN,
-                           "%-41s%-15s%-18s%-12s%-6s" %
+                           "%-41s%-15s%-18s%-12s%06d" %
                            (self._customer_name, self.get_serial(),
                             self._customer_document,
                             datetime.date.today().strftime('%d%m%y%H%M%S'),
-                            '000546'))
+                            coo))
 
     def coupon_add_item(self, code, description, price, taxcode,
                         quantity=Decimal("1.0"), unit=UnitType.EMPTY,
