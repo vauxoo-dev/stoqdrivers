@@ -7,7 +7,6 @@ Created on Thu Sep  6 17:12:46 2012
 
 import datetime
 import logging
-import re
 
 from stoqdrivers.exceptions import AlmostOutofPaper
 from stoqdrivers.printers.bematech.MP25 import (
@@ -575,13 +574,18 @@ class MP4000(MP25):
         """
         res = self._read_transactions(start, end)
         res = res.split('\n')
-        data = {'invoices': []}
+        data = {'invoices': [], 'payments': {}}
+        flag_detailed = False
         f = {}
         for t in res[11:]:
             conts = [m for m in t.split(' ') if m]
             if conts:
                 # print "Linea ", conts
-                if 'COO:' in conts[0]:
+                if 'Informe' in conts[0] and 'Detallado' in conts[1]:
+                    flag_detailed = True
+                elif 'Resumen' in conts[0]:
+                    flag_detailed = False
+                elif 'COO:' in conts[0]:
                     if f:
                         data['invoices'].append(f)
                     f = {'payments': {}, 'cancel': {}}
@@ -589,36 +593,35 @@ class MP4000(MP25):
                     f.update({temp[0]: temp[1]})
                     temp = conts[1].split(':')
                     f.update({temp[0]: temp[1]})
-                    temp = ['date', datetime.datetime.strptime(
-                        '%s %s' % (conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
+                    temp = ['date', '%s %s' % (conts[2], conts[3])]
                     f.update({temp[0]: temp[1]})
-                elif re.search(r'^(-|)[0-9]{1,},[0-9]{1,}$', conts[-1]) and \
-                        conts[-2] == '=':
-                    temp = [' '.join(conts[:-2]),
-                            float(conts[-1].replace(',', '.'))]
-                    f['payments'].update({temp[0]: temp[1]})
+                elif len(conts) > 1 and conts[1] == '=' and flag_detailed:
+                    amount = float(conts[2].replace(',', '.'))
+                    f['payments'].update({conts[0]: amount})
                 elif 'ANULACI' in conts[0]:
                     temp = conts[1].split(':')
                     f['cancel'].update({temp[0]: temp[1]})
-                    temp = ['date', datetime.datetime.strptime(
-                        '%s %s' % (conts[2], conts[3]), '%d/%m/%Y %H:%M:%S')]
+                    temp = ['date', '%s %s' % (conts[2], conts[3])]
                     f['cancel'].update({temp[0]: temp[1]})
                 elif 'Factura' in conts[0] and 'Inicial' in conts[1]:
-                    data.update({'start': int(conts[2])})
+                    data.update({'start': conts[2]})
                 elif 'Factura' in conts[0] and 'Final' in conts[1]:
-                    data.update({'end': int(conts[2])})
+                    data.update({'end': conts[2]})
                 elif len(conts) > 3 and 'Facturas' in conts[2] and \
                         'mero' in conts[0] and 'Anuladas' in conts[3]:
-                    data.update({'ncancels': int(conts[4])})
+                    data.update({'ncancels': conts[4]})
                 elif len(conts) > 3 and 'Facturas' in conts[2] and \
                         'mero' in conts[0]:
-                    data.update({'ninvoices': int(conts[3])})
+                    data.update({'ninvoices': conts[3]})
                 elif 'VERSI' in conts[0] and 'CAJA' in conts[1] and \
                         'TIENDA' in conts[2]:
                     temp = conts[1].split(':')
-                    data.update({'till': int(temp[1])})
+                    data.update({'till': temp[1]})
                     temp = conts[2].split(':')
-                    data.update({'store': int(temp[1])})
+                    data.update({'store': temp[1]})
+                elif len(conts) > 1 and conts[1] == '=' and not flag_detailed:
+                    amount = float(conts[2].replace(',', '.'))
+                    data['payments'].update({conts[0]: amount})
         if f:
             data['invoices'].append(f)
         return data
